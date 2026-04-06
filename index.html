@@ -44,10 +44,15 @@
             padding: 25px; border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             display: none; z-index: 1; overflow-y: auto;
+            transition: max-height 0.3s ease;
         }
+
+        #drag-handle { width: 40px; height: 5px; background: #ccc; border-radius: 3px; margin: 0 auto 15px auto; display: none; cursor: pointer; }
 
         .panel-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 15px; }
         #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; }
+        
+        #country-flag { height: 24px; border: 1px solid #eee; border-radius: 4px; display: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         .info-row { margin-bottom: 12px; font-size: 15px; line-height: 1.4; }
         .info-label { font-weight: bold; color: #555; display: block; font-size: 13px; margin-bottom: 2px; }
@@ -61,11 +66,16 @@
         
         #close-panel { font-size: 16px; color: #888; margin-right: 10px; margin-top: 3px; }
         
-        /* התאמה למובייל (מסכים קטנים מ-600px) */
         @media (max-width: 600px) {
             #top-bar { top: 10px; left: 10px; right: 10px; justify-content: space-between; padding: 10px; }
-            #search-input { width: 160px; }
-            #info-panel { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-height: 50vh; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); padding: 20px; }
+            #search-input { width: 150px; }
+            #info-panel { 
+                top: auto; bottom: 0; right: 0; left: 0; width: auto; 
+                max-height: 45vh; 
+                border-radius: 20px 20px 0 0; padding: 15px 20px; 
+            }
+            #drag-handle { display: block; } 
+            #info-panel.expanded { max-height: 85vh; } 
         }
     </style>
 </head>
@@ -81,8 +91,12 @@
     </div>
     
     <div id="info-panel">
+        <div id="drag-handle" title="לחץ להרחבה/כיווץ"></div>
         <div class="panel-header">
-            <h2><span id="country-name">טוען...</span></h2>
+            <h2>
+                <span id="country-name">טוען...</span>
+                <img id="country-flag" src="" alt="דגל">
+            </h2>
             <div>
                 <button id="share-btn" class="icon-btn" title="שתף">🔗</button>
                 <button id="close-panel" class="icon-btn" title="סגור">✖</button>
@@ -92,9 +106,13 @@
         <div class="info-row"><span class="info-label">עיר בירה:</span> <span class="info-value" id="country-capital"></span></div>
         <div class="info-row"><span class="info-label">מטבע:</span> <span class="info-value" id="country-currency"></span></div>
         <div class="info-row"><span class="info-label">שטח:</span> <span class="info-value" id="country-area"></span></div>
+        <div class="info-row"><span class="info-label">דירוג שטח בעולם:</span> <span class="info-value" id="country-area-rank"></span></div>
         <div class="info-row"><span class="info-label">אוכלוסייה:</span> <span class="info-value" id="country-pop"></span></div>
+        <div class="info-row"><span class="info-label">דירוג אוכלוסייה בעולם:</span> <span class="info-value" id="country-pop-rank"></span></div>
         <div class="info-row"><span class="info-label">תמ"ג (GDP):</span> <span class="info-value" id="country-gdp"></span></div>
+        <div class="info-row"><span class="info-label">דירוג תמ"ג בעולם:</span> <span class="info-value" id="country-gdp-rank"></span></div>
         <div class="info-row"><span class="info-label">תמ"ג לנפש:</span> <span class="info-value" id="country-gdp-pc"></span></div>
+        <div class="info-row"><span class="info-label">דירוג תמ"ג לנפש בעולם:</span> <span class="info-value" id="country-gdp-pc-rank"></span></div>
         
         <div class="info-row">
             <span class="info-label">תקציר:</span>
@@ -119,19 +137,16 @@
         let geojsonData = null;
         let searchIndex = [];
 
-        // טעינת הקובץ שלך מ-GitHub (נתיב יחסי, כי שניהם באותה תיקייה)
         fetch('countries.geojson')
             .then(res => res.json())
             .then(data => {
                 geojsonData = data;
-                // בניית אינדקס החיפוש מתוך הנתונים שלך
                 data.features.forEach(f => {
                     const props = f.properties;
-                    // ודא ששמות העמודות (Name_HE, NAME_EN, ISO_A2) תואמים במדויק לאיך שהם כתובים ב-QGIS!
                     if (props.Name_HE) {
                         searchIndex.push({
                             code: props.ISO_A2,
-                            feature: f, // שומרים את כל הפוליגון לחיפוש מהיר
+                            feature: f, 
                             name: props.Name_HE,
                             englishName: (props.NAME_EN || props.NAME || '').toLowerCase()
                         });
@@ -151,7 +166,6 @@
         }
 
         map.on('load', () => {
-            // הוספת ה-GeoJSON שלך למפה
             map.addSource('countries', { type: 'geojson', data: 'countries.geojson' });
             
             map.addLayer({ 
@@ -160,29 +174,48 @@
             });
             map.addLayer({ 'id': 'country-highlight', 'type': 'line', 'source': 'countries', 'filter': ['==', 'ISO_A2', ''], 'paint': { 'line-color': '#3b82f6', 'line-width': 2.5 } });
 
-            // פונקציית טעינת המידע - עכשיו מקבלת את כל הפוליגון ולא צריכה להוריד נתונים!
             async function loadCountry(feature, lngLat = null) {
                 const props = feature.properties;
                 const isoCode = props.ISO_A2;
                 const hebName = props.Name_HE;
 
-                document.getElementById('info-panel').style.display = 'block';
+                const panel = document.getElementById('info-panel');
+                panel.style.display = 'block';
+                panel.classList.remove('expanded'); 
                 map.setFilter('country-highlight', ['==', 'ISO_A2', isoCode]);
 
-                // משיכת כל הנתונים ישירות מהטבלה שלך (שניות!)
                 document.getElementById('country-name').innerText = hebName || 'לא ידוע';
                 document.getElementById('country-capital').innerText = props.Capital_HE || 'אין נתונים';
                 document.getElementById('country-currency').innerText = props.Currency_HE || 'אין נתונים';
                 
-                // עיצוב מספרים במידה וקיימים
                 document.getElementById('country-area').innerText = props.Area_KM2 ? Number(props.Area_KM2).toLocaleString() + ' קמ"ר' : 'אין נתונים';
+                document.getElementById('country-area-rank').innerText = props.Area_Rank ? `#${props.Area_Rank}` : 'אין נתונים';
+                
                 document.getElementById('country-pop').innerText = props.Population ? Number(props.Population).toLocaleString() : 'אין נתונים';
+                document.getElementById('country-pop-rank').innerText = props.Pop_Rank ? `#${props.Pop_Rank}` : 'אין נתונים';
+                
                 document.getElementById('country-gdp').innerText = props.GDP_Billion_USD ? Number(props.GDP_Billion_USD).toLocaleString() + ' מיליארד $' : 'אין נתונים';
+                document.getElementById('country-gdp-rank').innerText = props.GDP_Rank ? `#${props.GDP_Rank}` : 'אין נתונים';
+                
                 document.getElementById('country-gdp-pc').innerText = props.GDP_Per_Capita_USD ? '$' + Number(props.GDP_Per_Capita_USD).toLocaleString() : 'אין נתונים';
+                document.getElementById('country-gdp-pc-rank').innerText = props.GDPPC_Rank ? `#${props.GDPPC_Rank}` : 'אין נתונים';
+
+                let flagUrl = '';
+                if (isoCode === 'PR') {
+                    flagUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Puerto_Rican_Independence_Flag.svg/160px-Puerto_Rican_Independence_Flag.svg.png';
+                } else if (isoCode) {
+                    flagUrl = `https://flagcdn.com/w80/${isoCode.toLowerCase()}.png`;
+                }
+                const flagImg = document.getElementById('country-flag');
+                if (flagUrl) {
+                    flagImg.src = flagUrl;
+                    flagImg.style.display = 'block';
+                } else {
+                    flagImg.style.display = 'none';
+                }
 
                 document.getElementById('country-wiki').innerText = 'מאתר תקציר...';
 
-                // הנתון היחיד שאנחנו מביאים מבחוץ זה התקציר מוויקיפדיה (כדי לא לנפח את ה-GeoJSON בטקסט ארוך)
                 try {
                     const wikiRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hebName)}`);
                     const wikiData = await wikiRes.json();
@@ -193,26 +226,26 @@
                     document.getElementById('country-wiki').innerText = 'שגיאה בטעינת ויקיפדיה.';
                 }
 
-                // תעופה למדינה
                 const targetZoom = getZoomLevel(Number(props.Area_KM2));
                 if (lngLat) {
                     map.flyTo({ center: lngLat, zoom: targetZoom });
                 } else {
-                    // אם לא לחצנו בעכבר (חיפוש או רנדום), Turf.js מוצא את האמצע של הפוליגון!
                     const center = turf.centerOfMass(feature);
                     map.flyTo({ center: center.geometry.coordinates, zoom: targetZoom });
                 }
             }
 
-            // אירועי לחיצה
             map.on('click', 'countries-fill', (e) => loadCountry(e.features[0], e.lngLat));
             map.on('mouseenter', 'countries-fill', () => map.getCanvas().style.cursor = 'pointer');
             map.on('mouseleave', 'countries-fill', () => map.getCanvas().style.cursor = '');
 
-            // כפתורים
             document.getElementById('close-panel').addEventListener('click', () => {
                 document.getElementById('info-panel').style.display = 'none';
-                map.setFilter('country-highlight', ['==', 'ISO_A2', '']); // מחיקת ההדגשה
+                map.setFilter('country-highlight', ['==', 'ISO_A2', '']); 
+            });
+
+            document.getElementById('drag-handle').addEventListener('click', () => {
+                document.getElementById('info-panel').classList.toggle('expanded');
             });
 
             document.getElementById('random-btn').onclick = () => {
@@ -231,7 +264,6 @@
                 });
             });
 
-            // חיפוש
             const searchInput = document.getElementById('search-input');
             const suggestions = document.getElementById('suggestions');
 
