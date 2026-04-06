@@ -6,11 +6,12 @@
     <title>Atlas - האטלס האנציקלופדי</title>
     
     <meta property="og:title" content="Atlas - האטלס האנציקלופדי">
-    <meta property="og:description" content="אטלס תלת-ממדי אינטראקטיבי לחקר מדינות, נתונים ומידע גיאוגרפי.">
+    <meta property="og:description" content="אטלס תלת-ממדי אינטראקטיבי לחקר מדינות, ערים ומידע גיאוגרפי.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
     
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background-color: #0b0b19; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -26,16 +27,9 @@
         #top-bar h1 { margin: 0; font-size: 22px; font-weight: 800; color: #111; }
         
         #search-container { position: relative; }
-        #search-input {
-            padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px;
-            font-family: inherit; width: 220px; background: #fff;
-        }
+        #search-input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; font-family: inherit; width: 220px; background: #fff; }
         #search-input:focus { outline: none; border-color: #3b82f6; }
-        #suggestions {
-            position: absolute; top: 100%; right: 0; width: 100%; background: #fff;
-            border: 1px solid #ddd; border-top: none; border-radius: 0 0 6px 6px;
-            max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none;
-        }
+        #suggestions { position: absolute; top: 100%; right: 0; width: 100%; background: #fff; border: 1px solid #ddd; border-top: none; border-radius: 0 0 6px 6px; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
         .suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; text-align: right; }
         .suggestion-item:last-child { border-bottom: none; }
         .suggestion-item:hover { background-color: #f0f7ff; }
@@ -54,18 +48,25 @@
 
         .panel-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 15px; }
         #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; }
-        #country-flag { height: 24px; border: 1px solid #ddd; border-radius: 4px; display: none; }
-
+        
         .info-row { margin-bottom: 12px; font-size: 15px; line-height: 1.4; }
         .info-label { font-weight: bold; color: #555; display: block; font-size: 13px; margin-bottom: 2px; }
         .info-value { color: #111; font-size: 15px; }
 
         #country-wiki { font-size: 14px; color: #333; line-height: 1.6; text-align: justify; background: #f8f9fa; padding: 12px; border-radius: 8px; border-right: 4px solid #3b82f6; }
-        
         .sources-links { margin-top: 15px; border-top: 1px solid #eee; padding-top: 12px; display: flex; gap: 15px; font-size: 13px; }
         .sources-links a { color: #3b82f6; text-decoration: none; font-weight: bold; }
         
         #toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; display: none; z-index: 10; }
+        
+        #close-panel { font-size: 16px; color: #888; margin-right: 10px; margin-top: 3px; }
+        
+        /* התאמה למובייל (מסכים קטנים מ-600px) */
+        @media (max-width: 600px) {
+            #top-bar { top: 10px; left: 10px; right: 10px; justify-content: space-between; padding: 10px; }
+            #search-input { width: 160px; }
+            #info-panel { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-height: 50vh; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); padding: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -73,14 +74,20 @@
     <div id="top-bar">
         <h1>Atlas.</h1>
         <div id="search-container">
-            <input type="text" id="search-input" placeholder="חפש מדינה (עברית/English)" autocomplete="off">
+            <input type="text" id="search-input" placeholder="חפש מדינה..." autocomplete="off">
             <div id="suggestions"></div>
         </div>
         <button id="random-btn" class="icon-btn" title="מדינה אקראית">🎲</button>
     </div>
     
     <div id="info-panel">
-        <div class="panel-header"><h2><span id="country-name">טוען...</span><img id="country-flag" src="" alt=""></h2><button id="share-btn" class="icon-btn">🔗</button></div>
+        <div class="panel-header">
+            <h2><span id="country-name">טוען...</span></h2>
+            <div>
+                <button id="share-btn" class="icon-btn" title="שתף">🔗</button>
+                <button id="close-panel" class="icon-btn" title="סגור">✖</button>
+            </div>
+        </div>
         
         <div class="info-row"><span class="info-label">עיר בירה:</span> <span class="info-value" id="country-capital"></span></div>
         <div class="info-row"><span class="info-label">מטבע:</span> <span class="info-value" id="country-currency"></span></div>
@@ -93,8 +100,7 @@
             <span class="info-label">תקציר:</span>
             <div id="country-wiki"></div>
         </div>
-        
-        <div class="sources-links"><a id="link-wiki" target="_blank">ויקיפדיה</a><a id="link-wb" target="_blank">הבנק העולמי</a></div>
+        <div class="sources-links"><a id="link-wiki" target="_blank">ויקיפדיה</a></div>
     </div>
     
     <div id="toast">הועתק!</div>
@@ -104,56 +110,35 @@
         
         const map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/light-v11', // תוכל לעדכן לסגנון הסטודיו שלך כאן
+            style: 'mapbox://styles/mapbox/light-v11', // עדכן לעיצוב הסטודיו שלך
             center: [34.78, 32.08], zoom: 3, projection: 'globe'
         });
 
         map.on('style.load', () => { map.setFog({'color': 'rgb(220, 230, 240)', 'high-color': 'rgb(36, 92, 223)', 'space-color': 'rgb(11, 11, 25)'}); });
 
-        // מילון תרגום מלא למדינות - לחיפוש מהיר במיוחד ותמיכה מלאה בעברית
-        const hebrewCountries = {
-            "AF": "אפגניסטן", "AL": "אלבניה", "DZ": "אלג'יריה", "AD": "אנדורה", "AO": "אנגולה", "AG": "אנטיגואה וברבודה", "AR": "ארגנטינה", "AM": "ארמניה", "AU": "אוסטרליה", "AT": "אוסטריה", "AZ": "אזרבייג'ן", "BS": "איי בהאמה", "BH": "בחריין", "BD": "בנגלדש", "BB": "ברבדוס", "BY": "בלארוס", "BE": "בלגיה", "BZ": "בליז", "BJ": "בנין", "BT": "בהוטן", "BO": "בוליביה", "BA": "בוסניה והרצגובינה", "BW": "בוטסואנה", "BR": "ברזיל", "BN": "ברוניי", "BG": "בולגריה", "BF": "בורקינה פאסו", "BI": "בורונדי", "CV": "כף ורדה", "KH": "קמבודיה", "CM": "קמרון", "CA": "קנדה", "CF": "הרפובליקה המרכז-אפריקאית", "TD": "צ'אד", "CL": "צ'ילה", "CN": "סין", "CO": "קולומביה", "KM": "קומורו", "CG": "הרפובליקה של קונגו", "CD": "הרפובליקה הדמוקרטית של קונגו", "CR": "קוסטה ריקה", "HR": "קרואטיה", "CU": "קובה", "CY": "קפריסין", "CZ": "צ'כיה", "DK": "דנמרק", "DJ": "ג'יבוטי", "DM": "דומיניקה", "DO": "הרפובליקה הדומיניקנית", "EC": "אקוודור", "EG": "מצרים", "SV": "אל סלוודור", "GQ": "גינאה המשוונית", "ER": "אריתריאה", "EE": "אסטוניה", "SZ": "אסוואטיני", "ET": "אתיופיה", "FJ": "פיג'י", "FI": "פינלנד", "FR": "צרפת", "GA": "גבון", "GM": "גמביה", "GE": "גיאורגיה", "DE": "גרמניה", "GH": "גאנה", "GR": "יוון", "GD": "גרנדה", "GT": "גואטמלה", "GN": "גינאה", "GW": "גינאה ביסאו", "GY": "גיאנה", "HT": "האיטי", "HN": "הונדורס", "HU": "הונגריה", "IS": "איסלנד", "IN": "הודו", "ID": "אינדונזיה", "IR": "איראן", "IQ": "עיראק", "IE": "אירלנד", "IL": "ישראל", "IT": "איטליה", "CI": "חוף השנהב", "JM": "ג'מייקה", "JP": "יפן", "JO": "ירדן", "KZ": "קזחסטן", "KE": "קניה", "KI": "קיריבטי", "KP": "קוריאה הצפונית", "KR": "קוריאה הדרומית", "KW": "כווית", "KG": "קירגיזסטן", "LA": "לאוס", "LV": "לטביה", "LB": "לבנון", "LS": "לסוטו", "LR": "ליבריה", "LY": "לוב", "LI": "ליכטנשטיין", "LT": "ליטא", "LU": "לוקסמבורג", "MG": "מדגסקר", "MW": "מלאווי", "MY": "מלזיה", "MV": "האיים המלדיביים", "ML": "מאלי", "MT": "מלטה", "MH": "איי מרשל", "MR": "מאוריטניה", "MU": "מאוריציוס", "MX": "מקסיקו", "FM": "מיקרונזיה", "MD": "מולדובה", "MC": "מונקו", "MN": "מונגוליה", "ME": "מונטנגרו", "MA": "מרוקו", "MZ": "מוזמביק", "MM": "מיאנמר", "NA": "נמיביה", "NR": "נאורו", "NP": "נפאל", "NL": "הולנד", "NZ": "ניו זילנד", "NI": "ניקרגואה", "NE": "ניז'ר", "NG": "ניגריה", "MK": "מקדוניה הצפונית", "NO": "נורווגיה", "OM": "עומאן", "PK": "פקיסטן", "PW": "פלאו", "PA": "פנמה", "PG": "פפואה גינאה החדשה", "PY": "פרגוואי", "PE": "פרו", "PH": "הפיליפינים", "PL": "פולין", "PT": "פורטוגל", "QA": "קטר", "RO": "רומניה", "RU": "רוסיה", "RW": "רואנדה", "KN": "סנט קיטס ונוויס", "LC": "סנט לוסיה", "VC": "סנט וינסנט והגרנדינים", "WS": "סמואה", "SM": "סן מרינו", "ST": "סאו טומה ופרינסיפה", "SA": "ערב הסעודית", "SN": "סנגל", "RS": "סרביה", "SC": "סיישל", "SL": "סיירה לאון", "SG": "סינגפור", "SK": "סלובקיה", "SI": "סלובניה", "SB": "איי שלמה", "SO": "סומליה", "ZA": "דרום אפריקה", "SS": "דרום סודאן", "ES": "ספרד", "LK": "סרי לנקה", "SD": "סודאן", "SR": "סורינאם", "SE": "שוודיה", "CH": "שווייץ", "SY": "סוריה", "TJ": "טג'יקיסטן", "TZ": "טנזניה", "TH": "תאילנד", "TL": "מזרח טימור", "TG": "טוגו", "TO": "טונגה", "TT": "טרינידד וטובגו", "TN": "תוניסיה", "TR": "טורקיה", "TM": "טורקמניסטן", "TV": "טובאלו", "UG": "אוגנדה", "UA": "אוקראינה", "AE": "איחוד האמירויות הערביות", "GB": "הממלכה המאוחדת", "US": "ארצות הברית", "UY": "אורוגוואי", "UZ": "אוזבקיסטן", "VU": "ונואטו", "VA": "הוותיקן", "VE": "ונצואלה", "VN": "וייטנאם", "YE": "תימן", "ZM": "זמביה", "ZW": "זימבבואה", "TW": "טאיוואן", "PS": "פלסטין", "XK": "קוסובו"
-        };
-
-        const manualTranslations = {
-            "Renminbi": "יואן סיני", "Ulan Bator": "אולנבטור", "Praia": "פראיה", "Cape Verdean Escudo": "אסקודו של כף ורדה"
-        };
-
-        let validIsoCodes = [];
+        let geojsonData = null;
         let searchIndex = [];
 
-        // שליפה מהירה (רק השדות שצריך)
-        fetch('https://restcountries.com/v3.1/all?fields=cca2,independent,name')
+        // טעינת הקובץ שלך מ-GitHub (נתיב יחסי, כי שניהם באותה תיקייה)
+        fetch('countries.geojson')
             .then(res => res.json())
             .then(data => {
-                const exceptions = ['TW', 'PS', 'XK'];
-                const sovereignStates = data.filter(c => c.independent === true || exceptions.includes(c.cca2));
-                
-                sovereignStates.forEach(c => {
-                    validIsoCodes.push(c.cca2);
-                    // שימוש במילון הקשיח לחיפוש העברי
-                    const hebName = hebrewCountries[c.cca2] || c.name.common;
-                    
-                    searchIndex.push({ 
-                        code: c.cca2, 
-                        name: hebName, 
-                        englishName: c.name.common.toLowerCase() 
-                    });
+                geojsonData = data;
+                // בניית אינדקס החיפוש מתוך הנתונים שלך
+                data.features.forEach(f => {
+                    const props = f.properties;
+                    // ודא ששמות העמודות (Name_HE, NAME_EN, ISO_A2) תואמים במדויק לאיך שהם כתובים ב-QGIS!
+                    if (props.Name_HE) {
+                        searchIndex.push({
+                            code: props.ISO_A2,
+                            feature: f, // שומרים את כל הפוליגון לחיפוש מהיר
+                            name: props.Name_HE,
+                            englishName: (props.NAME_EN || props.NAME || '').toLowerCase()
+                        });
+                    }
                 });
-            });
-
-        async function translateWiki(term) {
-            if (!term) return 'אין מידע';
-            if (manualTranslations[term]) return manualTranslations[term]; 
-            try {
-                const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&titles=${encodeURIComponent(term)}&lllang=he&format=json&origin=*`);
-                const data = await res.json();
-                const pages = data.query.pages;
-                const pageId = Object.keys(pages)[0];
-                if (pageId !== "-1" && pages[pageId].langlinks) return pages[pageId].langlinks[0]['*'];
-                return term;
-            } catch { return term; }
-        }
+            })
+            .catch(err => console.error("שגיאה בטעינת המדינות:", err));
 
         function getZoomLevel(area) {
             if (!area) return 4;
@@ -166,85 +151,76 @@
         }
 
         map.on('load', () => {
-            map.addSource('countries', { type: 'geojson', data: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_admin_0_countries.geojson' });
+            // הוספת ה-GeoJSON שלך למפה
+            map.addSource('countries', { type: 'geojson', data: 'countries.geojson' });
             
-            // יצירת השכבה רק אחרי שהרשימה מוכנה
-            const addLayerInterval = setInterval(() => {
-                if(validIsoCodes.length > 0) {
-                    clearInterval(addLayerInterval);
-                    map.addLayer({ 
-                        'id': 'countries-fill', 'type': 'fill', 'source': 'countries', 
-                        'filter': ['in', 'iso_a2', ...validIsoCodes], 
-                        'paint': { 'fill-color': '#fff', 'fill-opacity': 0 } 
-                    });
-                    map.addLayer({ 'id': 'country-highlight', 'type': 'line', 'source': 'countries', 'filter': ['==', 'iso_a2', ''], 'paint': { 'line-color': '#3b82f6', 'line-width': 2.5 } });
-                    
-                    map.on('click', 'countries-fill', (e) => loadCountry(e.features[0].properties.iso_a2, e.lngLat));
-                    map.on('mouseenter', 'countries-fill', () => map.getCanvas().style.cursor = 'pointer');
-                    map.on('mouseleave', 'countries-fill', () => map.getCanvas().style.cursor = '');
+            map.addLayer({ 
+                'id': 'countries-fill', 'type': 'fill', 'source': 'countries', 
+                'paint': { 'fill-color': '#fff', 'fill-opacity': 0 } 
+            });
+            map.addLayer({ 'id': 'country-highlight', 'type': 'line', 'source': 'countries', 'filter': ['==', 'ISO_A2', ''], 'paint': { 'line-color': '#3b82f6', 'line-width': 2.5 } });
+
+            // פונקציית טעינת המידע - עכשיו מקבלת את כל הפוליגון ולא צריכה להוריד נתונים!
+            async function loadCountry(feature, lngLat = null) {
+                const props = feature.properties;
+                const isoCode = props.ISO_A2;
+                const hebName = props.Name_HE;
+
+                document.getElementById('info-panel').style.display = 'block';
+                map.setFilter('country-highlight', ['==', 'ISO_A2', isoCode]);
+
+                // משיכת כל הנתונים ישירות מהטבלה שלך (שניות!)
+                document.getElementById('country-name').innerText = hebName || 'לא ידוע';
+                document.getElementById('country-capital').innerText = props.Capital_HE || 'אין נתונים';
+                document.getElementById('country-currency').innerText = props.Currency_HE || 'אין נתונים';
+                
+                // עיצוב מספרים במידה וקיימים
+                document.getElementById('country-area').innerText = props.Area_KM2 ? Number(props.Area_KM2).toLocaleString() + ' קמ"ר' : 'אין נתונים';
+                document.getElementById('country-pop').innerText = props.Population ? Number(props.Population).toLocaleString() : 'אין נתונים';
+                document.getElementById('country-gdp').innerText = props.GDP_Billion_USD ? Number(props.GDP_Billion_USD).toLocaleString() + ' מיליארד $' : 'אין נתונים';
+                document.getElementById('country-gdp-pc').innerText = props.GDP_Per_Capita_USD ? '$' + Number(props.GDP_Per_Capita_USD).toLocaleString() : 'אין נתונים';
+
+                document.getElementById('country-wiki').innerText = 'מאתר תקציר...';
+
+                // הנתון היחיד שאנחנו מביאים מבחוץ זה התקציר מוויקיפדיה (כדי לא לנפח את ה-GeoJSON בטקסט ארוך)
+                try {
+                    const wikiRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hebName)}`);
+                    const wikiData = await wikiRes.json();
+                    document.getElementById('country-wiki').innerText = wikiData.extract || 'לא נמצא תקציר בעברית.';
+                    document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(hebName)}`;
+                    document.getElementById('link-wiki').style.display = 'inline';
+                } catch {
+                    document.getElementById('country-wiki').innerText = 'שגיאה בטעינת ויקיפדיה.';
                 }
-            }, 100);
 
-            async function loadCountry(isoCode, lngLat = null) {
-                const panel = document.getElementById('info-panel');
-                panel.style.display = 'block';
-                map.setFilter('country-highlight', ['==', 'iso_a2', isoCode]);
-
-                document.getElementById('country-gdp').innerText = 'טוען...';
-                document.getElementById('country-gdp-pc').innerText = 'טוען...';
-                document.getElementById('country-area').innerText = 'טוען...';
-
-                const res = await fetch(`https://restcountries.com/v3.1/alpha/${isoCode}`);
-                const data = await res.json();
-                const c = data[0];
-
-                // שולפים את השם ישירות מהמילון, ושולחים לוויקיפדיה רק את המטבע והבירה!
-                const hebName = hebrewCountries[isoCode] || c.name.common;
-                const [hebCapital, hebCurrency] = await Promise.all([
-                    translateWiki(c.capital ? c.capital[0] : null), 
-                    translateWiki(c.currencies ? Object.values(c.currencies)[0].name : null)
-                ]);
-
-                document.getElementById('country-name').innerText = hebName;
-                document.getElementById('country-capital').innerText = hebCapital;
-                document.getElementById('country-currency').innerText = hebCurrency;
-                document.getElementById('country-area').innerText = c.area ? c.area.toLocaleString() + ' קמ"ר' : 'אין נתונים';
-                document.getElementById('country-pop').innerText = c.population.toLocaleString();
-                document.getElementById('country-flag').src = c.flags.svg;
-                document.getElementById('country-flag').style.display = 'block';
-
-                Promise.all([
-                    fetch(`https://api.worldbank.org/v2/country/${isoCode}/indicator/NY.GDP.MKTP.CD?format=json&mrnev=1`).then(r=>r.json()),
-                    fetch(`https://api.worldbank.org/v2/country/${isoCode}/indicator/NY.GDP.PCAP.CD?format=json&mrnev=1`).then(r=>r.json())
-                ]).then(([gdpData, gdpPcData]) => {
-                    if (gdpData[1] && gdpData[1][0] && gdpData[1][0].value) {
-                        const val = gdpData[1][0].value;
-                        document.getElementById('country-gdp').innerText = val > 1e12 ? (val/1e12).toFixed(2) + ' טריליון $' : (val/1e9).toFixed(2) + ' מיליארד $';
-                    } else { document.getElementById('country-gdp').innerText = 'אין נתונים'; }
-                    
-                    if (gdpPcData[1] && gdpPcData[1][0] && gdpPcData[1][0].value) {
-                        document.getElementById('country-gdp-pc').innerText = '$' + gdpPcData[1][0].value.toLocaleString(undefined, {maximumFractionDigits: 0});
-                    } else { document.getElementById('country-gdp-pc').innerText = 'אין נתונים'; }
-                    
-                    document.getElementById('link-wb').href = `https://data.worldbank.org/country/${isoCode}`;
-                    document.getElementById('link-wb').style.display = 'inline';
-                }).catch(() => {
-                    document.getElementById('country-gdp').innerText = 'שגיאה';
-                    document.getElementById('country-gdp-pc').innerText = 'שגיאה';
-                });
-
-                const wikiRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hebName)}`);
-                const wikiData = await wikiRes.json();
-                document.getElementById('country-wiki').innerText = wikiData.extract || 'לא נמצא תקציר.';
-                document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(hebName)}`;
-                document.getElementById('link-wiki').style.display = 'inline';
-
-                const targetZoom = getZoomLevel(c.area);
-                if (lngLat) map.flyTo({ center: lngLat, zoom: targetZoom });
-                else if (c.latlng) map.flyTo({ center: [c.latlng[1], c.latlng[0]], zoom: targetZoom });
+                // תעופה למדינה
+                const targetZoom = getZoomLevel(Number(props.Area_KM2));
+                if (lngLat) {
+                    map.flyTo({ center: lngLat, zoom: targetZoom });
+                } else {
+                    // אם לא לחצנו בעכבר (חיפוש או רנדום), Turf.js מוצא את האמצע של הפוליגון!
+                    const center = turf.centerOfMass(feature);
+                    map.flyTo({ center: center.geometry.coordinates, zoom: targetZoom });
+                }
             }
 
-            document.getElementById('random-btn').onclick = () => loadCountry(validIsoCodes[Math.floor(Math.random() * validIsoCodes.length)]);
+            // אירועי לחיצה
+            map.on('click', 'countries-fill', (e) => loadCountry(e.features[0], e.lngLat));
+            map.on('mouseenter', 'countries-fill', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'countries-fill', () => map.getCanvas().style.cursor = '');
+
+            // כפתורים
+            document.getElementById('close-panel').addEventListener('click', () => {
+                document.getElementById('info-panel').style.display = 'none';
+                map.setFilter('country-highlight', ['==', 'ISO_A2', '']); // מחיקת ההדגשה
+            });
+
+            document.getElementById('random-btn').onclick = () => {
+                if (geojsonData && geojsonData.features.length > 0) {
+                    const randomFeature = geojsonData.features[Math.floor(Math.random() * geojsonData.features.length)];
+                    loadCountry(randomFeature);
+                }
+            };
             
             document.getElementById('share-btn').addEventListener('click', () => {
                 const currentName = document.getElementById('country-name').innerText;
@@ -255,6 +231,7 @@
                 });
             });
 
+            // חיפוש
             const searchInput = document.getElementById('search-input');
             const suggestions = document.getElementById('suggestions');
 
@@ -274,7 +251,7 @@
                         div.className = 'suggestion-item';
                         div.innerText = match.name;
                         div.onclick = () => {
-                            loadCountry(match.code);
+                            loadCountry(match.feature);
                             searchInput.value = match.name;
                             suggestions.style.display = 'none';
                         };
