@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Atlas - האטלס האנציקלופדי</title>
     
     <meta property="og:title" content="Atlas - האטלס האנציקלופדי">
@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #0b0b19; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #0b0b19; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         
         #top-bar {
@@ -43,17 +43,20 @@
             background: rgba(255, 255, 255, 0.95);
             padding: 25px; border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            display: none; z-index: 1; overflow-y: auto;
-            transition: max-height 0.3s ease-in-out;
+            display: none; z-index: 10; overflow-y: auto;
         }
 
-        #drag-handle-wrapper { width: 100%; padding: 10px 0; margin-top: -15px; margin-bottom: 5px; display: none; justify-content: center; cursor: grab; }
-        #drag-handle { width: 40px; height: 5px; background: #ccc; border-radius: 3px; }
+        /* פס הגרירה למובייל */
+        #drag-handle-wrapper { 
+            width: 100%; padding: 15px 0; margin-top: -15px; display: none; 
+            justify-content: center; cursor: ns-resize; touch-action: none; 
+        }
+        #drag-handle { width: 50px; height: 6px; background: #bbb; border-radius: 4px; }
 
         .panel-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 15px; }
-        #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; }
+        #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; font-size: 20px; }
         
-        #country-flag { height: 26px; display: none; }
+        #country-flag { height: 26px; display: none; border-radius: 4px; }
         
         .info-row { margin-bottom: 12px; font-size: 15px; line-height: 1.4; }
         .info-label { font-weight: bold; color: #555; display: block; font-size: 13px; margin-bottom: 2px; }
@@ -63,15 +66,18 @@
         .sources-links { margin-top: 15px; border-top: 1px solid #eee; padding-top: 12px; display: flex; gap: 15px; font-size: 13px; }
         .sources-links a { color: #3b82f6; text-decoration: none; font-weight: bold; }
         
-        #toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; display: none; z-index: 10; }
-        #close-panel { font-size: 16px; color: #888; margin-right: 10px; margin-top: 3px; }
+        #toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; display: none; z-index: 100; }
+        #close-panel { font-size: 18px; color: #888; margin-right: 10px; }
         
         @media (max-width: 600px) {
             #top-bar { top: 10px; left: 10px; right: 10px; justify-content: space-between; padding: 10px; }
-            #search-input { width: 150px; }
-            #info-panel { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-height: 40vh; border-radius: 20px 20px 0 0; padding: 20px; }
+            #search-input { width: 140px; }
+            #info-panel { 
+                top: auto; bottom: 0; right: 0; left: 0; width: auto; 
+                height: 35vh; /* גובה התחלתי */
+                max-height: none; border-radius: 20px 20px 0 0; padding: 15px 20px; 
+            }
             #drag-handle-wrapper { display: flex; }
-            #info-panel.expanded { max-height: 85vh; }
         }
     </style>
 </head>
@@ -103,42 +109,28 @@
         <div class="info-row"><span class="info-label">תקציר:</span><div id="country-wiki"></div></div>
         <div class="sources-links"><a id="link-wiki" target="_blank">ויקיפדיה</a></div>
     </div>
-    
     <div id="toast">הועתק!</div>
 
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiZXlhbGZpZGVsIiwiYSI6ImNtbm5kNHhjYTFocW0ycXM5eWN1bmprYTMifQ.o78OO-6F8ieXVTPGbmMCcA';
-        
-        const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/light-v11', // כאן תוכל להחליף לסגנון הסטודיו שלך
-            center: [34.78, 32.08], zoom: 3, projection: 'globe'
-        });
-
+        const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/light-v11', center: [34.78, 32.08], zoom: 3, projection: 'globe' });
         map.on('style.load', () => { map.setFog({'color': 'rgb(220, 230, 240)', 'high-color': 'rgb(36, 92, 223)', 'space-color': 'rgb(11, 11, 25)'}); });
 
-        let geojsonData = null;
-        let searchIndex = [];
+        let geojsonData = null, searchIndex = [];
 
-        fetch('countries.geojson')
-            .then(res => res.json())
-            .then(data => {
-                geojsonData = data;
-                data.features.forEach(f => {
-                    const p = f.properties;
-                    if (p.Name_HE) {
-                        searchIndex.push({ code: p.ISO_A2, feature: f, name: p.Name_HE, englishName: (p.NAME_EN || p.NAME || '').toLowerCase() });
-                    }
-                });
+        fetch('countries.geojson').then(res => res.json()).then(data => {
+            geojsonData = data;
+            data.features.forEach(f => {
+                const p = f.properties;
+                if (p.Name_HE) searchIndex.push({ code: p.ISO_A2, feature: f, name: p.Name_HE, englishName: (p.NAME_EN || p.NAME || '').toLowerCase() });
             });
+        }).catch(err => console.error("שגיאה בטעינת המדינות:", err));
 
         function getZoomLevel(area) {
-            if (!area) return 4;
-            if (area > 8000000) return 2.5; 
+            if (!area || area > 8000000) return 2.5; 
             if (area > 1000000) return 3.5; 
             if (area > 200000) return 4.5;  
-            if (area > 50000) return 5.5;   
-            return 8.5;                     
+            return 6.5;                     
         }
 
         map.on('load', () => {
@@ -147,88 +139,114 @@
             map.addLayer({ 'id': 'country-highlight', 'type': 'line', 'source': 'countries', 'filter': ['==', 'ISO_A2', ''], 'paint': { 'line-color': '#3b82f6', 'line-width': 2.5 } });
 
             async function loadCountry(feature, lngLat = null) {
-                const p = feature.properties;
-                const iso = p.ISO_A2;
+                const p = feature.properties, iso = p.ISO_A2, hebName = p.Name_HE;
                 const panel = document.getElementById('info-panel');
+                
                 panel.style.display = 'block';
-                panel.classList.remove('expanded');
+                if (window.innerWidth < 600) {
+                    panel.style.height = "35vh"; // גובה התחלתי במובייל בכל קליק
+                }
+                
                 map.setFilter('country-highlight', ['==', 'ISO_A2', iso]);
 
-                document.getElementById('country-name').innerText = p.Name_HE || 'לא ידוע';
-                document.getElementById('country-capital').innerText = p.Capital_HE || 'אין נתונים';
-                document.getElementById('country-currency').innerText = p.Currency_HE || 'אין נתונים';
+                document.getElementById('country-name').innerText = hebName;
+                document.getElementById('country-capital').innerText = p.Capital_HE || '---';
+                document.getElementById('country-currency').innerText = p.Currency_HE || '---';
                 
-                // תצוגת נתונים עם דירוג בסוגריים
-                const formatRank = (val, rank) => val ? Number(val).toLocaleString() + (rank ? ` (מקום ${rank} בעולם)` : "") : "אין נתונים";
-                document.getElementById('country-area').innerText = formatRank(p.Area_KM2, p.Area_Rank) + (p.Area_KM2 ? " קמ\"ר" : "");
-                document.getElementById('country-pop').innerText = formatRank(p.Population, p.Pop_Rank);
-                document.getElementById('country-gdp').innerText = formatRank(p.GDP_Billion_USD, p.GDP_Rank) + (p.GDP_Billion_USD ? " מיליארד $" : "");
-                document.getElementById('country-gdp-pc').innerText = (p.GDP_Per_Capita_USD ? "$" : "") + formatRank(p.GDP_Per_Capita_USD, p.GDPPC_Rank);
+                const fmt = (v, r) => v ? Number(v).toLocaleString() + (r ? ` (מקום ${r} בעולם)` : "") : "---";
+                document.getElementById('country-area').innerText = fmt(p.Area_KM2, p.Area_Rank) + (p.Area_KM2 ? " קמ\"ר" : "");
+                document.getElementById('country-pop').innerText = fmt(p.Population, p.Pop_Rank);
+                document.getElementById('country-gdp').innerText = fmt(p.GDP_Billion_USD, p.GDP_Rank) + (p.GDP_Billion_USD ? " מיליארד $" : "");
+                document.getElementById('country-gdp-pc').innerText = (p.GDP_Per_Capita_USD ? "$" : "") + fmt(p.GDP_Per_Capita_USD, p.GDPPC_Rank);
 
-                // ניהול דגלים (מקומי לעומת עולמי)
+                // ניהול דגלים
                 const localFlags = ['PR', 'NP'];
                 let flagUrl = localFlags.includes(iso) ? `flags/${iso}.png` : (iso ? `https://flagcdn.com/w80/${iso.toLowerCase()}.png` : "");
-                const flagImg = document.getElementById('country-flag');
+                const fImg = document.getElementById('country-flag');
+                
                 if (flagUrl) {
-                    flagImg.src = flagUrl;
-                    flagImg.style.display = 'block';
-                    // תיקון ויזואלי לנפאל
-                    if (iso === 'NP') { flagImg.style.border = 'none'; flagImg.style.boxShadow = 'none'; }
-                    else { flagImg.style.border = '1px solid #eee'; flagImg.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }
+                    fImg.src = flagUrl;
+                    fImg.style.display = 'block';
+                    if (iso === 'NP') { 
+                        fImg.style.border = 'none'; 
+                        fImg.style.boxShadow = 'none'; 
+                    } else { 
+                        fImg.style.border = '1px solid #eee'; 
+                        fImg.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; 
+                    }
+                } else {
+                    fImg.style.display = 'none';
                 }
 
                 document.getElementById('country-wiki').innerText = 'מאתר תקציר...';
                 try {
-                    const wikiRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(p.Name_HE)}`);
-                    const wikiData = await wikiRes.json();
-                    document.getElementById('country-wiki').innerText = wikiData.extract || 'לא נמצא תקציר בעברית.';
-                    document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(p.Name_HE)}`;
-                } catch { document.getElementById('country-wiki').innerText = 'שגיאה בטעינת ויקיפדיה.'; }
+                    const wRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(hebName)}`);
+                    const wData = await wRes.json();
+                    document.getElementById('country-wiki').innerText = wData.extract || 'לא נמצא תקציר.';
+                    document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(hebName)}`;
+                } catch { document.getElementById('country-wiki').innerText = 'שגיאה בטעינה.'; }
 
-                const targetZoom = getZoomLevel(Number(p.Area_KM2));
-                if (lngLat) map.flyTo({ center: lngLat, zoom: targetZoom });
-                else { const center = turf.centerOfMass(feature); map.flyTo({ center: center.geometry.coordinates, zoom: targetZoom }); }
+                const zoom = getZoomLevel(Number(p.Area_KM2));
+                if (lngLat) map.flyTo({ center: lngLat, zoom: zoom });
+                else { const c = turf.centerOfMass(feature); map.flyTo({ center: c.geometry.coordinates, zoom: zoom }); }
             }
 
             map.on('click', 'countries-fill', (e) => loadCountry(e.features[0], e.lngLat));
-            map.on('mouseenter', 'countries-fill', () => map.getCanvas().style.cursor = 'pointer');
-            map.on('mouseleave', 'countries-fill', () => map.getCanvas().style.cursor = '');
             document.getElementById('close-panel').onclick = () => { document.getElementById('info-panel').style.display = 'none'; map.setFilter('country-highlight', ['==', 'ISO_A2', '']); };
 
-            // מנגנון Swipe למובייל
-            const dragWrapper = document.getElementById('drag-handle-wrapper');
-            let touchStartY = 0;
-            dragWrapper.ontouchstart = e => touchStartY = e.touches[0].clientY;
-            dragWrapper.ontouchend = e => {
-                const diff = touchStartY - e.changedTouches[0].clientY;
-                if (diff > 30) document.getElementById('info-panel').classList.add('expanded');
-                else if (diff < -30) document.getElementById('info-panel').classList.remove('expanded');
-                else document.getElementById('info-panel').classList.toggle('expanded');
-            };
+            // === מנגנון גרירה (Drag-to-Resize) חלק ואמיתי למובייל ===
+            const panel = document.getElementById('info-panel');
+            const handle = document.getElementById('drag-handle-wrapper');
+            let isDragging = false;
+
+            handle.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                panel.style.transition = 'none'; // מבטל אנימציה כדי שהגרירה תהיה חלקה יחד עם האצבע
+                e.preventDefault(); // מונע מהדף להיגלל
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const touchY = e.touches[0].clientY;
+                const vh = window.innerHeight;
+                // מחשב את גובה החלונית מהתחתית (גובה המסך פחות מיקום האצבע)
+                let newHeight = vh - touchY;
+                
+                // גבולות עליון ותחתון לחלונית (בין 15% ל-90% מהמסך)
+                if (newHeight < vh * 0.15) newHeight = vh * 0.15;
+                if (newHeight > vh * 0.90) newHeight = vh * 0.90;
+                
+                panel.style.height = `${newHeight}px`;
+            }, { passive: false });
+
+            document.addEventListener('touchend', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.transition = 'height 0.2s ease-out'; // מחזיר קצת אנימציה להחלקה סופית
+            });
+            // ========================================================
 
             document.getElementById('random-btn').onclick = () => { if (geojsonData) loadCountry(geojsonData.features[Math.floor(Math.random() * geojsonData.features.length)]); };
             document.getElementById('share-btn').onclick = () => {
-                navigator.clipboard.writeText(`בדקו את המידע על ${document.getElementById('country-name').innerText} ב-Atlas!`).then(() => {
-                    const t = document.getElementById('toast'); t.style.display = 'block'; setTimeout(() => t.style.opacity = '1', 10);
+                navigator.clipboard.writeText(`בדקו את ${document.getElementById('country-name').innerText} ב-Atlas!`).then(() => {
+                    const t = document.getElementById('toast'); t.style.display = 'block'; t.style.opacity = '1';
                     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 2000);
                 });
             };
 
-            const sInput = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
-            sInput.oninput = function() {
+            const sIn = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
+            sIn.oninput = function() {
                 const val = this.value.trim().toLowerCase(); sSug.innerHTML = '';
                 if (!val) { sSug.style.display = 'none'; return; }
                 const matches = searchIndex.filter(i => i.name.toLowerCase().includes(val) || i.englishName.includes(val));
-                if (matches.length) {
-                    matches.forEach(m => {
-                        const d = document.createElement('div'); d.className = 'suggestion-item'; d.innerText = m.name;
-                        d.onclick = () => { loadCountry(m.feature); sInput.value = m.name; sSug.style.display = 'none'; };
-                        sSug.appendChild(d);
-                    });
-                    sSug.style.display = 'block';
-                } else sSug.style.display = 'none';
+                matches.forEach(m => {
+                    const d = document.createElement('div'); d.className = 'suggestion-item'; d.innerText = m.name;
+                    d.onclick = () => { loadCountry(m.feature); sIn.value = m.name; sSug.style.display = 'none'; };
+                    sSug.appendChild(d);
+                });
+                sSug.style.display = matches.length ? 'block' : 'none';
             };
-            document.onclick = e => { if (e.target !== sInput && e.target !== sSug) sSug.style.display = 'none'; };
+            document.onclick = e => { if (e.target !== sIn && e.target !== sSug) sSug.style.display = 'none'; };
         });
     </script>
 </body>
