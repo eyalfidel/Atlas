@@ -46,11 +46,7 @@
             display: none; z-index: 10; overflow-y: auto;
         }
 
-        /* פס הגרירה למובייל */
-        #drag-handle-wrapper { 
-            width: 100%; padding: 15px 0; margin-top: -15px; display: none; 
-            justify-content: center; cursor: ns-resize; touch-action: none; 
-        }
+        #drag-handle-wrapper { width: 100%; padding: 15px 0; margin-top: -15px; display: none; justify-content: center; cursor: ns-resize; touch-action: none; }
         #drag-handle { width: 50px; height: 6px; background: #bbb; border-radius: 4px; }
 
         .panel-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 15px; }
@@ -74,8 +70,7 @@
             #search-input { width: 140px; }
             #info-panel { 
                 top: auto; bottom: 0; right: 0; left: 0; width: auto; 
-                height: 35vh; /* גובה התחלתי */
-                max-height: none; border-radius: 20px 20px 0 0; padding: 15px 20px; 
+                height: 35vh; max-height: none; border-radius: 20px 20px 0 0; padding: 15px 20px; 
             }
             #drag-handle-wrapper { display: flex; }
         }
@@ -138,30 +133,40 @@
             map.addLayer({ 'id': 'countries-fill', 'type': 'fill', 'source': 'countries', 'paint': { 'fill-color': '#fff', 'fill-opacity': 0 } });
             map.addLayer({ 'id': 'country-highlight', 'type': 'line', 'source': 'countries', 'filter': ['==', 'ISO_A2', ''], 'paint': { 'line-color': '#3b82f6', 'line-width': 2.5 } });
 
+            // בדיקת כתובת URL בעת טעינת האתר (Deep Linking)
+            const checkUrlHash = () => {
+                if (geojsonData && window.location.hash) {
+                    const hashIso = window.location.hash.substring(1).toUpperCase();
+                    const feature = geojsonData.features.find(f => f.properties.ISO_A2 === hashIso);
+                    if (feature) loadCountry(feature);
+                } else if (!geojsonData) {
+                    setTimeout(checkUrlHash, 100); // מחכה שהקובץ יירד
+                }
+            };
+            checkUrlHash();
+
             async function loadCountry(feature, lngLat = null) {
                 const p = feature.properties, iso = p.ISO_A2, hebName = p.Name_HE;
                 const panel = document.getElementById('info-panel');
                 
                 panel.style.display = 'block';
-                if (window.innerWidth < 600) {
-                    panel.style.height = "35vh"; // גובה התחלתי במובייל בכל קליק
-                }
+                if (window.innerWidth < 600) panel.style.height = "35vh";
                 
                 map.setFilter('country-highlight', ['==', 'ISO_A2', iso]);
+                
+                // עדכון ה-URL עם קוד המדינה
+                window.location.hash = iso;
 
                 document.getElementById('country-name').innerText = hebName;
                 document.getElementById('country-capital').innerText = p.Capital_HE || '---';
                 document.getElementById('country-currency').innerText = p.Currency_HE || '---';
                 
-                // לוגיקת סדר הטקסט המתוקנת ל-RTL
                 const formatRank = (rank) => rank ? ` (מקום ${rank} בעולם)` : "";
-                
                 document.getElementById('country-area').innerText = (p.Area_KM2 ? Number(p.Area_KM2).toLocaleString() + ' קמ"ר' : "---") + formatRank(p.Area_Rank);
                 document.getElementById('country-pop').innerText = (p.Population ? Number(p.Population).toLocaleString() : "---") + formatRank(p.Pop_Rank);
                 document.getElementById('country-gdp').innerText = (p.GDP_Billion_USD ? Number(p.GDP_Billion_USD).toLocaleString() + ' מיליארד $' : "---") + formatRank(p.GDP_Rank);
                 document.getElementById('country-gdp-pc').innerText = (p.GDP_Per_Capita_USD ? '$' + Number(p.GDP_Per_Capita_USD).toLocaleString() : "---") + formatRank(p.GDPPC_Rank);
 
-                // ניהול דגלים
                 const localFlags = ['PR', 'NP'];
                 let flagUrl = localFlags.includes(iso) ? `flags/${iso}.png` : (iso ? `https://flagcdn.com/w80/${iso.toLowerCase()}.png` : "");
                 const fImg = document.getElementById('country-flag');
@@ -169,16 +174,9 @@
                 if (flagUrl) {
                     fImg.src = flagUrl;
                     fImg.style.display = 'block';
-                    if (iso === 'NP') { 
-                        fImg.style.border = 'none'; 
-                        fImg.style.boxShadow = 'none'; 
-                    } else { 
-                        fImg.style.border = '1px solid #eee'; 
-                        fImg.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; 
-                    }
-                } else {
-                    fImg.style.display = 'none';
-                }
+                    if (iso === 'NP') { fImg.style.border = 'none'; fImg.style.boxShadow = 'none'; } 
+                    else { fImg.style.border = '1px solid #eee'; fImg.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }
+                } else fImg.style.display = 'none';
 
                 document.getElementById('country-wiki').innerText = 'מאתר תקציר...';
                 try {
@@ -188,66 +186,51 @@
                     document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(hebName)}`;
                 } catch { document.getElementById('country-wiki').innerText = 'שגיאה בטעינה.'; }
 
-                // מנגנון התמרכזות חכמה (Smart Centering)
                 const targetZoom = getZoomLevel(Number(p.Area_KM2));
-                
-                if (lngLat) {
-                    map.flyTo({ center: lngLat, zoom: targetZoom });
-                } else {
+                if (lngLat) map.flyTo({ center: lngLat, zoom: targetZoom });
+                else {
                     let targetCoords;
-                    if (p.Center_Lat && p.Center_Lng) {
-                        targetCoords = [Number(p.Center_Lng), Number(p.Center_Lat)];
-                    } 
+                    if (p.Center_Lat && p.Center_Lng) targetCoords = [Number(p.Center_Lng), Number(p.Center_Lat)];
                     else if (feature.geometry.type === 'MultiPolygon') {
-                        let largestPoly = feature.geometry.coordinates.reduce((prev, curr) => {
-                            return turf.area(turf.polygon(curr)) > turf.area(turf.polygon(prev)) ? curr : prev;
-                        });
-                        const center = turf.centerOfMass(turf.polygon(largestPoly));
-                        targetCoords = center.geometry.coordinates;
+                        let largestPoly = feature.geometry.coordinates.reduce((prev, curr) => turf.area(turf.polygon(curr)) > turf.area(turf.polygon(prev)) ? curr : prev);
+                        targetCoords = turf.centerOfMass(turf.polygon(largestPoly)).geometry.coordinates;
                     } 
-                    else {
-                        const center = turf.centerOfMass(feature);
-                        targetCoords = center.geometry.coordinates;
-                    }
+                    else targetCoords = turf.centerOfMass(feature).geometry.coordinates;
                     map.flyTo({ center: targetCoords, zoom: targetZoom });
                 }
             }
 
             map.on('click', 'countries-fill', (e) => loadCountry(e.features[0], e.lngLat));
-            document.getElementById('close-panel').onclick = () => { document.getElementById('info-panel').style.display = 'none'; map.setFilter('country-highlight', ['==', 'ISO_A2', '']); };
+            
+            document.getElementById('close-panel').onclick = () => { 
+                document.getElementById('info-panel').style.display = 'none'; 
+                map.setFilter('country-highlight', ['==', 'ISO_A2', '']); 
+                // ניקוי ה-URL כשסוגרים חלונית
+                history.pushState("", document.title, window.location.pathname + window.location.search);
+            };
 
-            // מנגנון גרירה (Drag-to-Resize) למובייל
             const panel = document.getElementById('info-panel');
             const handle = document.getElementById('drag-handle-wrapper');
             let isDragging = false;
 
-            handle.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                panel.style.transition = 'none';
-                e.preventDefault();
-            }, { passive: false });
-
+            handle.addEventListener('touchstart', (e) => { isDragging = true; panel.style.transition = 'none'; e.preventDefault(); }, { passive: false });
             document.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
-                const touchY = e.touches[0].clientY;
-                const vh = window.innerHeight;
+                const touchY = e.touches[0].clientY, vh = window.innerHeight;
                 let newHeight = vh - touchY;
-                
                 if (newHeight < vh * 0.15) newHeight = vh * 0.15;
                 if (newHeight > vh * 0.90) newHeight = vh * 0.90;
-                
                 panel.style.height = `${newHeight}px`;
             }, { passive: false });
-
-            document.addEventListener('touchend', () => {
-                if (!isDragging) return;
-                isDragging = false;
-                panel.style.transition = 'height 0.2s ease-out';
-            });
+            document.addEventListener('touchend', () => { if (isDragging) { isDragging = false; panel.style.transition = 'height 0.2s ease-out'; }});
 
             document.getElementById('random-btn').onclick = () => { if (geojsonData) loadCountry(geojsonData.features[Math.floor(Math.random() * geojsonData.features.length)]); };
+            
+            // שיתוף משודרג עם הכתובת החדשה
             document.getElementById('share-btn').onclick = () => {
-                navigator.clipboard.writeText(`בדקו את ${document.getElementById('country-name').innerText} ב-Atlas!`).then(() => {
+                const countryName = document.getElementById('country-name').innerText;
+                const currentUrl = window.location.href; // עכשיו זה כולל את ה-#
+                navigator.clipboard.writeText(`בדקו את ${countryName} ב-Atlas!\n${currentUrl}`).then(() => {
                     const t = document.getElementById('toast'); t.style.display = 'block'; t.style.opacity = '1';
                     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 2000);
                 });
