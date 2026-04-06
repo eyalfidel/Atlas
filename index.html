@@ -159,7 +159,7 @@
                 document.getElementById('country-gdp').innerText = fmt(p.GDP_Billion_USD, p.GDP_Rank) + (p.GDP_Billion_USD ? " מיליארד $" : "");
                 document.getElementById('country-gdp-pc').innerText = (p.GDP_Per_Capita_USD ? "$" : "") + fmt(p.GDP_Per_Capita_USD, p.GDPPC_Rank);
 
-                // ניהול דגלים
+                // ניהול דגלים (כולל תיקיית ה-flags המקומית ב-GitHub)
                 const localFlags = ['PR', 'NP'];
                 let flagUrl = localFlags.includes(iso) ? `flags/${iso}.png` : (iso ? `https://flagcdn.com/w80/${iso.toLowerCase()}.png` : "");
                 const fImg = document.getElementById('country-flag');
@@ -186,33 +186,54 @@
                     document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(hebName)}`;
                 } catch { document.getElementById('country-wiki').innerText = 'שגיאה בטעינה.'; }
 
-                const zoom = getZoomLevel(Number(p.Area_KM2));
-                if (lngLat) map.flyTo({ center: lngLat, zoom: zoom });
-                else { const c = turf.centerOfMass(feature); map.flyTo({ center: c.geometry.coordinates, zoom: zoom }); }
+                // --- מנגנון התמרכזות חכמה (Smart Centering) ---
+                const targetZoom = getZoomLevel(Number(p.Area_KM2));
+                
+                if (lngLat) {
+                    map.flyTo({ center: lngLat, zoom: targetZoom });
+                } else {
+                    let targetCoords;
+                    // 1. בדיקה אם קיימות קואורדינטות שהגדרת ידנית ב-GIS
+                    if (p.Center_Lat && p.Center_Lng) {
+                        targetCoords = [Number(p.Center_Lng), Number(p.Center_Lat)];
+                    } 
+                    // 2. מציאת הפוליגון הגדול ביותר במדינות מפוצלות (MultiPolygon)
+                    else if (feature.geometry.type === 'MultiPolygon') {
+                        let largestPoly = feature.geometry.coordinates.reduce((prev, curr) => {
+                            return turf.area(turf.polygon(curr)) > turf.area(turf.polygon(prev)) ? curr : prev;
+                        });
+                        const center = turf.centerOfMass(turf.polygon(largestPoly));
+                        targetCoords = center.geometry.coordinates;
+                    } 
+                    // 3. חישוב רגיל לפוליגון פשוט
+                    else {
+                        const center = turf.centerOfMass(feature);
+                        targetCoords = center.geometry.coordinates;
+                    }
+                    map.flyTo({ center: targetCoords, zoom: targetZoom });
+                }
             }
 
             map.on('click', 'countries-fill', (e) => loadCountry(e.features[0], e.lngLat));
             document.getElementById('close-panel').onclick = () => { document.getElementById('info-panel').style.display = 'none'; map.setFilter('country-highlight', ['==', 'ISO_A2', '']); };
 
-            // === מנגנון גרירה (Drag-to-Resize) חלק ואמיתי למובייל ===
+            // מנגנון גרירה (Drag-to-Resize) למובייל
             const panel = document.getElementById('info-panel');
             const handle = document.getElementById('drag-handle-wrapper');
             let isDragging = false;
 
             handle.addEventListener('touchstart', (e) => {
                 isDragging = true;
-                panel.style.transition = 'none'; // מבטל אנימציה כדי שהגרירה תהיה חלקה יחד עם האצבע
-                e.preventDefault(); // מונע מהדף להיגלל
+                panel.style.transition = 'none';
+                e.preventDefault();
             }, { passive: false });
 
             document.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
                 const touchY = e.touches[0].clientY;
                 const vh = window.innerHeight;
-                // מחשב את גובה החלונית מהתחתית (גובה המסך פחות מיקום האצבע)
                 let newHeight = vh - touchY;
                 
-                // גבולות עליון ותחתון לחלונית (בין 15% ל-90% מהמסך)
                 if (newHeight < vh * 0.15) newHeight = vh * 0.15;
                 if (newHeight > vh * 0.90) newHeight = vh * 0.90;
                 
@@ -222,9 +243,8 @@
             document.addEventListener('touchend', () => {
                 if (!isDragging) return;
                 isDragging = false;
-                panel.style.transition = 'height 0.2s ease-out'; // מחזיר קצת אנימציה להחלקה סופית
+                panel.style.transition = 'height 0.2s ease-out';
             });
-            // ========================================================
 
             document.getElementById('random-btn').onclick = () => { if (geojsonData) loadCountry(geojsonData.features[Math.floor(Math.random() * geojsonData.features.length)]); };
             document.getElementById('share-btn').onclick = () => {
