@@ -44,10 +44,12 @@
             padding: 25px; border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             display: none; z-index: 1; overflow-y: auto;
-            transition: max-height 0.3s ease;
+            transition: max-height 0.3s ease-in-out;
         }
 
-        #drag-handle { width: 40px; height: 5px; background: #ccc; border-radius: 3px; margin: 0 auto 15px auto; display: none; cursor: pointer; }
+        /* עיצוב אזור המגע למובייל (מוסתר בדסקטופ) */
+        #drag-handle-wrapper { width: 100%; padding: 10px 0; margin-top: -15px; margin-bottom: 5px; display: none; justify-content: center; cursor: grab; }
+        #drag-handle { width: 40px; height: 5px; background: #ccc; border-radius: 3px; }
 
         .panel-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 15px; }
         #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; }
@@ -71,11 +73,11 @@
             #search-input { width: 150px; }
             #info-panel { 
                 top: auto; bottom: 0; right: 0; left: 0; width: auto; 
-                max-height: 45vh; 
-                border-radius: 20px 20px 0 0; padding: 15px 20px; 
+                max-height: 40vh; /* מצב מכווץ התחלתי */
+                border-radius: 20px 20px 0 0; padding: 20px; 
             }
-            #drag-handle { display: block; } 
-            #info-panel.expanded { max-height: 85vh; } 
+            #drag-handle-wrapper { display: flex; } /* הצגת אזור המגע */
+            #info-panel.expanded { max-height: 85vh; } /* מצב מורחב */
         }
     </style>
 </head>
@@ -91,7 +93,9 @@
     </div>
     
     <div id="info-panel">
-        <div id="drag-handle" title="לחץ להרחבה/כיווץ"></div>
+        <div id="drag-handle-wrapper" title="החלק למעלה/למטה">
+            <div id="drag-handle"></div>
+        </div>
         <div class="panel-header">
             <h2>
                 <span id="country-name">טוען...</span>
@@ -106,13 +110,9 @@
         <div class="info-row"><span class="info-label">עיר בירה:</span> <span class="info-value" id="country-capital"></span></div>
         <div class="info-row"><span class="info-label">מטבע:</span> <span class="info-value" id="country-currency"></span></div>
         <div class="info-row"><span class="info-label">שטח:</span> <span class="info-value" id="country-area"></span></div>
-        <div class="info-row"><span class="info-label">דירוג שטח בעולם:</span> <span class="info-value" id="country-area-rank"></span></div>
         <div class="info-row"><span class="info-label">אוכלוסייה:</span> <span class="info-value" id="country-pop"></span></div>
-        <div class="info-row"><span class="info-label">דירוג אוכלוסייה בעולם:</span> <span class="info-value" id="country-pop-rank"></span></div>
         <div class="info-row"><span class="info-label">תמ"ג (GDP):</span> <span class="info-value" id="country-gdp"></span></div>
-        <div class="info-row"><span class="info-label">דירוג תמ"ג בעולם:</span> <span class="info-value" id="country-gdp-rank"></span></div>
         <div class="info-row"><span class="info-label">תמ"ג לנפש:</span> <span class="info-value" id="country-gdp-pc"></span></div>
-        <div class="info-row"><span class="info-label">דירוג תמ"ג לנפש בעולם:</span> <span class="info-value" id="country-gdp-pc-rank"></span></div>
         
         <div class="info-row">
             <span class="info-label">תקציר:</span>
@@ -128,7 +128,7 @@
         
         const map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/light-v11', // עדכן לעיצוב הסטודיו שלך
+            style: 'mapbox://styles/mapbox/light-v11', // עדכן לעיצוב הסטודיו שלך כשתרצה
             center: [34.78, 32.08], zoom: 3, projection: 'globe'
         });
 
@@ -188,21 +188,26 @@
                 document.getElementById('country-capital').innerText = props.Capital_HE || 'אין נתונים';
                 document.getElementById('country-currency').innerText = props.Currency_HE || 'אין נתונים';
                 
-                document.getElementById('country-area').innerText = props.Area_KM2 ? Number(props.Area_KM2).toLocaleString() + ' קמ"ר' : 'אין נתונים';
-                document.getElementById('country-area-rank').innerText = props.Area_Rank ? `#${props.Area_Rank}` : 'אין נתונים';
+                const areaStr = props.Area_KM2 ? Number(props.Area_KM2).toLocaleString() + ' קמ"ר' : 'אין נתונים';
+                const areaRank = props.Area_Rank ? ` (מקום ${props.Area_Rank} בעולם)` : '';
+                document.getElementById('country-area').innerText = areaStr + areaRank;
                 
-                document.getElementById('country-pop').innerText = props.Population ? Number(props.Population).toLocaleString() : 'אין נתונים';
-                document.getElementById('country-pop-rank').innerText = props.Pop_Rank ? `#${props.Pop_Rank}` : 'אין נתונים';
+                const popStr = props.Population ? Number(props.Population).toLocaleString() : 'אין נתונים';
+                const popRank = props.Pop_Rank ? ` (מקום ${props.Pop_Rank} בעולם)` : '';
+                document.getElementById('country-pop').innerText = popStr + popRank;
                 
-                document.getElementById('country-gdp').innerText = props.GDP_Billion_USD ? Number(props.GDP_Billion_USD).toLocaleString() + ' מיליארד $' : 'אין נתונים';
-                document.getElementById('country-gdp-rank').innerText = props.GDP_Rank ? `#${props.GDP_Rank}` : 'אין נתונים';
+                const gdpStr = props.GDP_Billion_USD ? Number(props.GDP_Billion_USD).toLocaleString() + ' מיליארד $' : 'אין נתונים';
+                const gdpRank = props.GDP_Rank ? ` (מקום ${props.GDP_Rank} בעולם)` : '';
+                document.getElementById('country-gdp').innerText = gdpStr + gdpRank;
                 
-                document.getElementById('country-gdp-pc').innerText = props.GDP_Per_Capita_USD ? '$' + Number(props.GDP_Per_Capita_USD).toLocaleString() : 'אין נתונים';
-                document.getElementById('country-gdp-pc-rank').innerText = props.GDPPC_Rank ? `#${props.GDPPC_Rank}` : 'אין נתונים';
+                const gdpPcStr = props.GDP_Per_Capita_USD ? '$' + Number(props.GDP_Per_Capita_USD).toLocaleString() : 'אין נתונים';
+                const gdpPcRank = props.GDPPC_Rank ? ` (מקום ${props.GDPPC_Rank} בעולם)` : '';
+                document.getElementById('country-gdp-pc').innerText = gdpPcStr + gdpPcRank;
 
+                // שאיבת הדגל (כולל תיקון ה-SVG לפוארטו ריקו שיעבוד חלק)
                 let flagUrl = '';
                 if (isoCode === 'PR') {
-                    flagUrl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Puerto_Rican_Independence_Flag.svg/160px-Puerto_Rican_Independence_Flag.svg.png';
+                    flagUrl = 'https://upload.wikimedia.org/wikipedia/commons/2/28/Puerto_Rican_Independence_Flag.svg';
                 } else if (isoCode) {
                     flagUrl = `https://flagcdn.com/w80/${isoCode.toLowerCase()}.png`;
                 }
@@ -244,8 +249,29 @@
                 map.setFilter('country-highlight', ['==', 'ISO_A2', '']); 
             });
 
-            document.getElementById('drag-handle').addEventListener('click', () => {
-                document.getElementById('info-panel').classList.toggle('expanded');
+            // מנגנון החלקה (Swipe) למובייל
+            const dragWrapper = document.getElementById('drag-handle-wrapper');
+            const infoPanel = document.getElementById('info-panel');
+            let touchStartY = 0;
+
+            dragWrapper.addEventListener('touchstart', e => {
+                touchStartY = e.touches[0].clientY;
+            }, {passive: true});
+
+            dragWrapper.addEventListener('touchend', e => {
+                const touchEndY = e.changedTouches[0].clientY;
+                const diff = touchStartY - touchEndY;
+
+                if (diff > 30) {
+                    // החלקה למעלה = הרחבה
+                    infoPanel.classList.add('expanded');
+                } else if (diff < -30) {
+                    // החלקה למטה = כיווץ
+                    infoPanel.classList.remove('expanded');
+                } else {
+                    // לחיצה רגילה בלי החלקה
+                    infoPanel.classList.toggle('expanded');
+                }
             });
 
             document.getElementById('random-btn').onclick = () => {
