@@ -160,10 +160,9 @@
                 f.properties.isSea = true;
                 allFeatures.push(f);
                 if (f.properties.Name_HE) {
-                    // שליפה חסינה של השם באנגלית מה-GeoJSON
-                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || f.properties.PARENT_SEA || f.properties.Parent_Sea || '';
+                    // חיפוש חסין-ArcGIS לימות מבוסס Name_EN שתיקנת בקובץ
+                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || '';
                     let allPropsText = Object.values(f.properties).filter(v => typeof v === 'string').join(' ').toLowerCase();
-                    
                     searchIndex.push({ 
                         code: f.properties.ISO_A2, 
                         feature: f, 
@@ -351,7 +350,6 @@
             };
 
             const sIn = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
-            const sIn = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
             sIn.oninput = function() {
                 const val = this.value.trim().toLowerCase(); 
                 sSug.innerHTML = '';
@@ -369,8 +367,7 @@
                     const d = document.createElement('div'); d.className = 'suggestion-item'; 
                     
                     let displayText = m.name;
-                    // אם החיפוש באנגלית ויש שם באנגלית במאגר - הצג פורמט דו-לשוני
-                    if (isEnglishSearch && m.enNameReal && m.enNameReal.trim() !== "") {
+                    if (isEnglishSearch && m.enNameReal) {
                         displayText = `${m.enNameReal} (${m.name})`;
                     }
                     
