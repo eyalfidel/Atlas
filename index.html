@@ -115,7 +115,7 @@
         
         const map = new mapboxgl.Map({ 
             container: 'map', 
-            style: 'mapbox://styles/mapbox/light-v11', // כשיהיה לך סגנון מהסטודיו, תחליף כאן
+            style: 'mapbox://styles/mapbox/light-v11', 
             center: [34.78, 32.08], 
             zoom: initialZoom, 
             projection: 'globe' 
@@ -129,20 +129,15 @@
             fetch('seas.geojson').then(res => res.ok ? res.json() : { features: [] }).catch(() => ({ features: [] }))
         ]).then(([countriesData, seasData]) => {
             
-            // תהליך מדינות
+            // עיבוד מדינות
             countriesData.features.forEach(f => {
                 f.properties.isSea = false;
-                
                 const iso2 = f.properties.ISO_A2 || '';
-                // שינוי שם תצוגה מקומי לפלסטין
-                if (iso2 === 'PS') {
-                    f.properties.Name_HE = 'הרשות הפלסטינית';
-                }
+                if (iso2 === 'PS') f.properties.Name_HE = 'הרשות הפלסטינית';
                 
                 allFeatures.push(f);
                 if (f.properties.Name_HE) {
-                    // חיפוש חסין-ArcGIS למדינות מבוסס Name_EN
-                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || '';
+                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || f.properties.NAME || '';
                     let allPropsText = Object.values(f.properties).filter(v => typeof v === 'string').join(' ').toLowerCase();
                     searchIndex.push({ 
                         code: f.properties.ISO_A2, 
@@ -155,13 +150,13 @@
                 }
             });
 
-            // תהליך ימים
+            // עיבוד ימות
             seasData.features.forEach(f => {
                 f.properties.isSea = true;
                 allFeatures.push(f);
                 if (f.properties.Name_HE) {
-                    // חיפוש חסין-ArcGIS לימות מבוסס Name_EN שתיקנת בקובץ
-                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || '';
+                    // התיקון כאן: בודק את כל האפשרויות לשם באנגלית בימות
+                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || f.properties.Parent_Sea || f.properties.PARENT_SEA || f.properties.parent_sea || '';
                     let allPropsText = Object.values(f.properties).filter(v => typeof v === 'string').join(' ').toLowerCase();
                     searchIndex.push({ 
                         code: f.properties.ISO_A2, 
@@ -262,9 +257,7 @@
                 document.getElementById('country-area').innerText = areaText + areaRankFormat;
 
                 let wikiSearchTerm = p.Wiki_HE || p.WIKI_HE || p.wiki_he || hebName;
-                if (iso === 'PS') {
-                    wikiSearchTerm = 'הרשות הפלסטינית';
-                }
+                if (iso === 'PS') wikiSearchTerm = 'הרשות הפלסטינית';
 
                 document.getElementById('country-wiki').innerText = 'מאתר תקציר...';
                 try {
@@ -329,48 +322,29 @@
             document.getElementById('share-btn').onclick = async () => {
                 const countryName = document.getElementById('country-name').innerText;
                 const currentUrl = window.location.href; 
-                const shareData = {
-                    title: 'Atlas',
-                    text: `בדקו את ${countryName} ב-Atlas!`,
-                    url: currentUrl
-                };
-
-                try {
-                    if (navigator.share) {
-                        await navigator.share(shareData);
-                    } else {
-                        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
-                        const t = document.getElementById('toast'); 
-                        t.style.display = 'block'; t.style.opacity = '1';
-                        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 2000);
-                    }
-                } catch (err) {
-                    console.error('Share failed:', err);
+                const shareData = { title: 'Atlas', text: `בדקו את ${countryName} ב-Atlas!`, url: currentUrl };
+                if (navigator.share) await navigator.share(shareData);
+                else {
+                    await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                    const t = document.getElementById('toast'); 
+                    t.style.display = 'block'; t.style.opacity = '1';
+                    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 2000);
                 }
             };
 
+            // התיקון לחיפוש הדו-לשוני
             const sIn = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
             sIn.oninput = function() {
                 const val = this.value.trim().toLowerCase(); 
                 sSug.innerHTML = '';
                 if (!val) { sSug.style.display = 'none'; return; }
-                
                 const isEnglishSearch = /[a-z]/.test(val);
-                
-                const matches = searchIndex.filter(i => {
-                    const matchHeb = i.name && i.name.includes(val);
-                    const matchAll = i.allText && i.allText.includes(val); 
-                    return matchHeb || matchAll;
-                });
+                const matches = searchIndex.filter(i => (i.name && i.name.includes(val)) || (i.allText && i.allText.includes(val)));
                 
                 matches.forEach(m => {
                     const d = document.createElement('div'); d.className = 'suggestion-item'; 
-                    
                     let displayText = m.name;
-                    if (isEnglishSearch && m.enNameReal) {
-                        displayText = `${m.enNameReal} (${m.name})`;
-                    }
-                    
+                    if (isEnglishSearch && m.enNameReal && m.enNameReal.trim() !== "") displayText = `${m.enNameReal} (${m.name})`;
                     d.innerHTML = `${displayText} <span class="suggestion-type">${m.type}</span>`;
                     d.onclick = () => { loadFeature(m.feature); sIn.value = m.name; sSug.style.display = 'none'; };
                     sSug.appendChild(d);
