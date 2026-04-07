@@ -115,7 +115,7 @@
         
         const map = new mapboxgl.Map({ 
             container: 'map', 
-            style: 'mapbox://styles/mapbox/light-v11', // כאן תכניס את כתובת הסטודיו שלך
+            style: 'mapbox://styles/mapbox/light-v11', // כאן תכניס את ה-URL מ-Mapbox Studio כשיהיה מוכן
             center: [34.78, 32.08], 
             zoom: initialZoom, 
             projection: 'globe' 
@@ -129,9 +129,16 @@
             fetch('seas.geojson').then(res => res.ok ? res.json() : { features: [] }).catch(() => ({ features: [] }))
         ]).then(([countriesData, seasData]) => {
             
-            // אינדקס חיפוש (עברית + אנגלית)
+            // אינדקס חיפוש ועיבוד מדינות
             countriesData.features.forEach(f => {
                 f.properties.isSea = false;
+                
+                // --- תיקון ייעודי עבור הרשות הפלסטינית ---
+                if (f.properties.ISO_A2 === 'PS' || f.properties.Name_HE === 'פלסטין') {
+                    f.properties.Name_HE = 'הרשות הפלסטינית';
+                    f.properties.Wiki_HE = 'הרשות הפלסטינית';
+                }
+                
                 allFeatures.push(f);
                 if (f.properties.Name_HE) {
                     let enName = (f.properties.NAME_EN || f.properties.NAME || '').toLowerCase();
@@ -139,6 +146,7 @@
                 }
             });
 
+            // אינדקס חיפוש ועיבוד ימים
             seasData.features.forEach(f => {
                 f.properties.isSea = true;
                 allFeatures.push(f);
@@ -240,7 +248,15 @@
                 try {
                     const wRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiSearchTerm)}`);
                     const wData = await wRes.json();
-                    document.getElementById('country-wiki').innerText = wData.extract || 'לא נמצא תקציר.';
+                    
+                    if (wData.extract) {
+                        // ניקוי סימנים מיותרים מוויקיפדיה (כמו סמליל ההאזנה)
+                        let cleanText = wData.extract.replace(/\s*\(?ⓘ\)?\s*/g, ' ').trim();
+                        document.getElementById('country-wiki').innerText = cleanText;
+                    } else {
+                        document.getElementById('country-wiki').innerText = 'לא נמצא תקציר.';
+                    }
+                    
                     document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(wikiSearchTerm)}`;
                 } catch { document.getElementById('country-wiki').innerText = 'שגיאה בטעינה מול ויקיפדיה.'; }
 
@@ -285,7 +301,6 @@
 
             document.getElementById('random-btn').onclick = () => { if (allFeatures.length) loadFeature(allFeatures[Math.floor(Math.random() * allFeatures.length)]); };
             
-            // Web Share API
             document.getElementById('share-btn').onclick = async () => {
                 const countryName = document.getElementById('country-name').innerText;
                 const currentUrl = window.location.href; 
