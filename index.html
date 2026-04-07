@@ -115,7 +115,7 @@
         
         const map = new mapboxgl.Map({ 
             container: 'map', 
-            style: 'mapbox://styles/mapbox/light-v11', // תשנה פה כשה-Studio יהיה מוכן
+            style: 'mapbox://styles/mapbox/light-v11', // כשיהיה לך סגנון מהסטודיו, תחליף כאן
             center: [34.78, 32.08], 
             zoom: initialZoom, 
             projection: 'globe' 
@@ -129,35 +129,39 @@
             fetch('seas.geojson').then(res => res.ok ? res.json() : { features: [] }).catch(() => ({ features: [] }))
         ]).then(([countriesData, seasData]) => {
             
+            // תהליך מדינות
             countriesData.features.forEach(f => {
                 f.properties.isSea = false;
                 
                 const iso2 = f.properties.ISO_A2 || '';
-                // שינוי שם תצוגה מקומי לפלסטין (התיקון לוויקיפדיה קורה למטה)
+                // שינוי שם תצוגה מקומי לפלסטין
                 if (iso2 === 'PS') {
                     f.properties.Name_HE = 'הרשות הפלסטינית';
                 }
                 
                 allFeatures.push(f);
                 if (f.properties.Name_HE) {
-                    let enNameReal = f.properties.NAME_EN || f.properties.Name_EN || f.properties.NAME || '';
+                    // חיפוש חסין-ArcGIS למדינות מבוסס Name_EN
+                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || '';
                     let allPropsText = Object.values(f.properties).filter(v => typeof v === 'string').join(' ').toLowerCase();
                     searchIndex.push({ 
                         code: f.properties.ISO_A2, 
                         feature: f, 
                         name: f.properties.Name_HE, 
-                        enNameReal: enNameReal, // שומרים את השם האמיתי לתצוגה בסוגריים
+                        enNameReal: enNameReal, 
                         allText: allPropsText, 
                         type: 'מדינה' 
                     });
                 }
             });
 
+            // תהליך ימים
             seasData.features.forEach(f => {
                 f.properties.isSea = true;
                 allFeatures.push(f);
                 if (f.properties.Name_HE) {
-                    let enNameReal = f.properties.NAME_EN || f.properties.Name_EN || f.properties.parent_sea || '';
+                    // חיפוש חסין-ArcGIS לימות מבוסס Name_EN שתיקנת בקובץ
+                    let enNameReal = f.properties.Name_EN || f.properties.NAME_EN || f.properties.name_en || '';
                     let allPropsText = Object.values(f.properties).filter(v => typeof v === 'string').join(' ').toLowerCase();
                     searchIndex.push({ 
                         code: f.properties.ISO_A2, 
@@ -257,7 +261,6 @@
                 const areaRankFormat = p.Area_Rank ? ` (מקום ${p.Area_Rank})` : "";
                 document.getElementById('country-area').innerText = areaText + areaRankFormat;
 
-                // --- תיקון ייעודי ואגרסיבי לפלסטין לטובת משיכה מוויקיפדיה ---
                 let wikiSearchTerm = p.Wiki_HE || p.WIKI_HE || p.wiki_he || hebName;
                 if (iso === 'PS') {
                     wikiSearchTerm = 'הרשות הפלסטינית';
@@ -346,14 +349,12 @@
                 }
             };
 
-            // --- מנגנון החיפוש הדו-לשוני החדש ---
             const sIn = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
             sIn.oninput = function() {
                 const val = this.value.trim().toLowerCase(); 
                 sSug.innerHTML = '';
                 if (!val) { sSug.style.display = 'none'; return; }
                 
-                // בדיקה האם הקלדת לפחות אות אחת באנגלית כדי לדעת איך להציג את התוצאות
                 const isEnglishSearch = /[a-z]/.test(val);
                 
                 const matches = searchIndex.filter(i => {
@@ -365,7 +366,6 @@
                 matches.forEach(m => {
                     const d = document.createElement('div'); d.className = 'suggestion-item'; 
                     
-                    // בחירת טקסט התצוגה לפי שפת ההקלדה
                     let displayText = m.name;
                     if (isEnglishSearch && m.enNameReal) {
                         displayText = `${m.enNameReal} (${m.name})`;
