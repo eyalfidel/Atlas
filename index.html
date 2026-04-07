@@ -105,7 +105,7 @@
         <div class="info-row"><span class="info-label">תקציר:</span><div id="country-wiki"></div></div>
         <div class="sources-links"><a id="link-wiki" target="_blank">ויקיפדיה</a></div>
     </div>
-    <div id="toast">הועתק!</div>
+    <div id="toast">הועתק ללוח!</div>
 
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiZXlhbGZpZGVsIiwiYSI6ImNtbm5kNHhjYTFocW0ycXM5eWN1bmprYTMifQ.o78OO-6F8ieXVTPGbmMCcA';
@@ -115,7 +115,7 @@
         
         const map = new mapboxgl.Map({ 
             container: 'map', 
-            style: 'mapbox://styles/mapbox/light-v11', // תשנה פה כשה-Studio יהיה מוכן
+            style: 'mapbox://styles/mapbox/light-v11', 
             center: [34.78, 32.08], 
             zoom: initialZoom, 
             projection: 'globe' 
@@ -124,22 +124,29 @@
 
         let allFeatures = [], searchIndex = [];
 
-        // טעינה מקבילית של מדינות וימים
         Promise.all([
             fetch('countries.geojson').then(res => res.json()),
             fetch('seas.geojson').then(res => res.ok ? res.json() : { features: [] }).catch(() => ({ features: [] }))
         ]).then(([countriesData, seasData]) => {
             
+            // אינדקס מדינות (חיפוש עברית + אנגלית)
             countriesData.features.forEach(f => {
                 f.properties.isSea = false;
                 allFeatures.push(f);
-                if (f.properties.Name_HE) searchIndex.push({ code: f.properties.ISO_A2, feature: f, name: f.properties.Name_HE, type: 'מדינה' });
+                if (f.properties.Name_HE) {
+                    let enName = (f.properties.NAME_EN || f.properties.NAME || '').toLowerCase();
+                    searchIndex.push({ code: f.properties.ISO_A2, feature: f, name: f.properties.Name_HE, enName: enName, type: 'מדינה' });
+                }
             });
 
+            // אינדקס ימים (חיפוש עברית + אנגלית)
             seasData.features.forEach(f => {
                 f.properties.isSea = true;
                 allFeatures.push(f);
-                if (f.properties.Name_HE) searchIndex.push({ code: f.properties.ISO_A2, feature: f, name: f.properties.Name_HE, type: 'ים/אוקיינוס' });
+                if (f.properties.Name_HE) {
+                    let enName = (f.properties.NAME_EN || f.properties.Name_EN || f.properties.parent_sea || '').toLowerCase();
+                    searchIndex.push({ code: f.properties.ISO_A2, feature: f, name: f.properties.Name_HE, enName: enName, type: 'ים/אוקיינוס' });
+                }
             });
 
             const checkUrlHash = () => {
@@ -163,15 +170,12 @@
         }
 
         map.on('load', () => {
-            // שכבת מדינות
             map.addSource('countries', { type: 'geojson', data: 'countries.geojson' });
             map.addLayer({ 'id': 'countries-fill', 'type': 'fill', 'source': 'countries', 'paint': { 'fill-color': '#fff', 'fill-opacity': 0 } });
             
-            // שכבת ימים (טעינה בטוחה אם הקובץ לא קיים)
             map.addSource('seas', { type: 'geojson', data: 'seas.geojson' });
             map.addLayer({ 'id': 'seas-fill', 'type': 'fill', 'source': 'seas', 'paint': { 'fill-color': '#fff', 'fill-opacity': 0 } });
 
-            // קווי מתאר ובחירה
             map.addLayer({ 'id': 'feature-highlight', 'type': 'line', 'source': 'countries', 'filter': ['==', 'ISO_A2', ''], 'paint': { 'line-color': '#3b82f6', 'line-width': 2.5 } });
             map.addLayer({ 'id': 'sea-highlight', 'type': 'line', 'source': 'seas', 'filter': ['==', 'ISO_A2', ''], 'paint': { 'line-color': '#0ea5e9', 'line-width': 2.5 } });
 
@@ -185,7 +189,6 @@
                 panel.style.display = 'block';
                 if (isMobile) panel.style.height = "35vh";
                 
-                // הסתרת בחירה קודמת וסימון חדש
                 map.setFilter('feature-highlight', ['==', 'ISO_A2', '']);
                 map.setFilter('sea-highlight', ['==', 'ISO_A2', '']);
                 map.setFilter(isSea ? 'sea-highlight' : 'feature-highlight', ['==', 'ISO_A2', iso]);
@@ -194,7 +197,6 @@
 
                 document.getElementById('country-name').innerText = hebName;
                 
-                // ניהול תצוגה דינמי לפי סוג (ים או מדינה)
                 document.getElementById('row-capital').style.display = isSea ? 'none' : 'block';
                 document.getElementById('row-currency').style.display = isSea ? 'none' : 'block';
                 document.getElementById('row-pop').style.display = isSea ? 'none' : 'block';
@@ -222,12 +224,19 @@
                     } else fImg.style.display = 'none';
                 }
 
-                // שטח משותף לימים ולמדינות
+                let areaText = "---";
+                if (p.Area_KM2) {
+                    let a = parseFloat(p.Area_KM2);
+                    if (a >= 10000000) {
+                        areaText = (a / 1000000).toLocaleString('he-IL', {maximumFractionDigits: 1}) + ' מיליון קמ"ר';
+                    } else {
+                        areaText = Math.round(a).toLocaleString('he-IL') + ' קמ"ר';
+                    }
+                }
                 const areaRankFormat = p.Area_Rank ? ` (מקום ${p.Area_Rank})` : "";
-                document.getElementById('country-area').innerText = (p.Area_KM2 ? Number(p.Area_KM2).toLocaleString() + ' קמ"ר' : "---") + areaRankFormat;
+                document.getElementById('country-area').innerText = areaText + areaRankFormat;
 
-                // הבאת תקציר מוויקיפדיה (עם תמיכה בשם ייעודי לימים)
-                const wikiSearchTerm = p.Wiki_HE ? p.Wiki_HE : hebName;
+                const wikiSearchTerm = p.Wiki_HE || p.WIKI_HE || p.wiki_he || hebName;
                 document.getElementById('country-wiki').innerText = 'מאתר תקציר...';
                 try {
                     const wRes = await fetch(`https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiSearchTerm)}`);
@@ -236,7 +245,6 @@
                     document.getElementById('link-wiki').href = `https://he.wikipedia.org/wiki/${encodeURIComponent(wikiSearchTerm)}`;
                 } catch { document.getElementById('country-wiki').innerText = 'שגיאה בטעינה מול ויקיפדיה.'; }
 
-                // זום
                 const targetZoom = getZoomLevel(Number(p.Area_KM2));
                 if (lngLat) map.flyTo({ center: lngLat, zoom: targetZoom });
                 else {
@@ -278,20 +286,36 @@
 
             document.getElementById('random-btn').onclick = () => { if (allFeatures.length) loadFeature(allFeatures[Math.floor(Math.random() * allFeatures.length)]); };
             
-            document.getElementById('share-btn').onclick = () => {
+            // מנגנון שיתוף Native עם Web Share API
+            document.getElementById('share-btn').onclick = async () => {
                 const countryName = document.getElementById('country-name').innerText;
                 const currentUrl = window.location.href; 
-                navigator.clipboard.writeText(`בדקו את ${countryName} ב-Atlas!\n${currentUrl}`).then(() => {
-                    const t = document.getElementById('toast'); t.style.display = 'block'; t.style.opacity = '1';
-                    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 2000);
-                });
+                const shareData = {
+                    title: 'Atlas',
+                    text: `בדקו את ${countryName} ב-Atlas!`,
+                    url: currentUrl
+                };
+
+                try {
+                    if (navigator.share) {
+                        await navigator.share(shareData);
+                    } else {
+                        // גיבוי לדפדפנים ישנים שלא תומכים בחלונית שיתוף
+                        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+                        const t = document.getElementById('toast'); 
+                        t.style.display = 'block'; t.style.opacity = '1';
+                        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 300); }, 2000);
+                    }
+                } catch (err) {
+                    console.error('Share failed:', err);
+                }
             };
 
             const sIn = document.getElementById('search-input'), sSug = document.getElementById('suggestions');
             sIn.oninput = function() {
                 const val = this.value.trim().toLowerCase(); sSug.innerHTML = '';
                 if (!val) { sSug.style.display = 'none'; return; }
-                const matches = searchIndex.filter(i => i.name.toLowerCase().includes(val) || (i.feature.properties.NAME_EN && i.feature.properties.NAME_EN.toLowerCase().includes(val)));
+                const matches = searchIndex.filter(i => i.name.toLowerCase().includes(val) || (i.enName && i.enName.includes(val)));
                 matches.forEach(m => {
                     const d = document.createElement('div'); d.className = 'suggestion-item'; 
                     d.innerHTML = `${m.name} <span class="suggestion-type">${m.type}</span>`;
