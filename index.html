@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Atlas Beta - האטלס האנציקלופדי</title>
+    <title>Atlas - האטלס האנציקלופדי</title>
     
-    <meta property="og:title" content="Atlas Beta - האטלס האנציקלופדי">
+    <meta property="og:title" content="Atlas - האטלס האנציקלופדי">
     <meta property="og:description" content="אטלס תלת-ממדי אינטראקטיבי לחקר מדינות, ימים ומידע גיאוגרפי (גרסת בטא).">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
     
@@ -105,7 +105,7 @@
 <body>
     <div id="map"></div>
     <div id="top-bar">
-        <h1>Atlas (Beta)</h1>
+        <h1>Atlas</h1>
         <div id="search-container">
             <input type="text" id="search-input" placeholder="חיפוש מכל סוג..." autocomplete="off">
             <div id="suggestions"></div>
@@ -646,7 +646,7 @@
         document.getElementById('share-btn').onclick = async () => {
             const countryName = document.getElementById('country-name').innerText;
             const currentUrl = window.location.href; 
-            const shareData = { title: 'Atlas Beta', text: `בדקו את ${countryName} ב-Atlas Beta!`, url: currentUrl };
+            const shareData = { title: 'Atlas', text: `בדקו את ${countryName} ב-Atlas!`, url: currentUrl };
             try {
                 if (navigator.share) { await navigator.share(shareData); } 
                 else {
@@ -662,8 +662,8 @@
         document.getElementById('share-compare-btn').onclick = async () => {
             const shareUrl = window.location.href; 
             const shareData = {
-                title: 'Atlas Beta - השוואת מדינות',
-                text: `ראו את ההשוואה שערכתי ב-Atlas Beta!`,
+                title: 'Atlas - השוואת מדינות',
+                text: `ראו את ההשוואה שערכתי ב-Atlas!`,
                 url: shareUrl
             };
             try {
