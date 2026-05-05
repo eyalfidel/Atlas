@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Atlas - האטלס האנציקלופדי</title>
+    <title>Atlas - האטלס הוויקיפדי</title>
     
     <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
@@ -68,7 +68,7 @@
         #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; font-size: 20px; }
         #country-flag { height: 26px; display: none; border-radius: 4px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        .info-content-wrapper { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        .info-content-wrapper { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; padding-right: 5px;}
 
         .info-row { margin-bottom: 12px; font-size: 15px; line-height: 1.4; flex-shrink: 0; }
         .info-label { font-weight: bold; color: #555; display: block; font-size: 13px; margin-bottom: 2px; }
@@ -83,10 +83,10 @@
 
         /* אזור התקציר הנגלל */
         #country-wiki-container { margin-top: 15px; display: flex; flex-direction: column; flex-grow: 1; min-height: 80px; }
-        #country-wiki { font-size: 14px; color: #333; line-height: 1.6; text-align: justify; background: #f8f9fa; padding: 12px; border-radius: 8px; border-right: 4px solid #3b82f6; overflow-y: auto; flex-grow: 1; }
+        #country-wiki { font-size: 14px; color: #333; line-height: 1.6; text-align: justify; background: #f8f9fa; padding: 12px; border-radius: 8px; border-right: 4px solid #3b82f6; overflow-y: auto; flex-grow: 1; margin-bottom: 10px;}
         
         /* כפתורי פעולה בתחתית חלוניות - תמיד גלויים */
-        .bottom-actions { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; flex-wrap: wrap; align-items: center; flex-shrink: 0;}
+        .bottom-actions { display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px; flex-wrap: wrap; align-items: center; flex-shrink: 0;}
         .primary-btn { color: #1d4ed8; text-decoration: none; font-size: 13px; font-weight: bold; background: #eff6ff; padding: 8px 12px; border-radius: 6px; border: 1px solid #bfdbfe; transition: background 0.2s; cursor: pointer; display:inline-flex; align-items: center; justify-content: center; gap: 5px; font-family: inherit;}
         .primary-btn:hover { background: #dbeafe; }
         .icon-only-btn { font-size: 16px; padding: 6px 12px; }
@@ -123,9 +123,21 @@
 
         #close-panel { font-size: 18px; color: #888; margin-right: 10px; cursor: pointer; background: none; border: none; padding: 0; }
 
-        #about-backdrop, #compare-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; backdrop-filter: blur(2px); }
-        #about-modal, #compare-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 2001; display: none; }
+        #about-backdrop, #compare-backdrop, #onboarding-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; backdrop-filter: blur(2px); }
+        #about-modal, #compare-modal, #onboarding-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 2001; display: none; }
         
+        /* מסך Onboarding */
+        #onboarding-backdrop { z-index: 4000; display: block; }
+        #onboarding-modal { z-index: 4001; display: block; text-align: center; max-width: 550px;}
+        #onboarding-modal h2 { margin-top: 0; font-size: 28px; color: #111; margin-bottom: 5px;}
+        #onboarding-modal h3 { margin-top: 0; font-size: 18px; color: #3b82f6; margin-bottom: 20px; font-weight: normal;}
+        #onboarding-modal p { font-size: 15px; line-height: 1.6; color: #444; margin-bottom: 25px; }
+        .onboarding-features { text-align: right; margin-bottom: 30px; background: #f8f9fa; padding: 15px 20px 15px 40px; border-radius: 8px; border-right: 4px solid #3b82f6;}
+        .onboarding-features li { margin-bottom: 12px; font-size: 14px; color: #333; }
+        .onboarding-features li:last-child { margin-bottom: 0; }
+        #start-onboarding-btn { width: 100%; font-size: 16px; padding: 12px; border-radius: 8px; background: #3b82f6; color: white; border: none; font-weight: bold; cursor: pointer; transition: background 0.2s;}
+        #start-onboarding-btn:hover { background: #2563eb; }
+
         /* חלונית השוואה - מתוקנת עם רוחב ומיקום ברורים ל-Resize */
         #compare-modal { 
             position: absolute; 
@@ -172,7 +184,7 @@
 
         /* חלונית פופאפ נגררת הניתנת לשינוי גודל */
         .mapboxgl-popup { z-index: 50; }
-        .mapboxgl-popup-content { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); width: 340px; max-width: 90vw; position: relative; transition: transform 0s; resize: both; overflow: auto;}
+        .mapboxgl-popup-content { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); width: 340px; max-width: 90vw; position: relative; transition: transform 0s; resize: both; overflow: auto; display: flex; flex-direction: column;}
         .mapboxgl-popup-close-button { font-size: 20px; color: #666; padding: 4px; right: 4px; top: 4px; z-index: 2;}
         .mapboxgl-popup-close-button:hover { background-color: #f0f0f0; border-radius: 50%; }
         
@@ -183,7 +195,7 @@
         .popup-recenter-btn:hover { color: #3b82f6;}
         
         .poi-popup h4 { margin: 0 0 8px 0; color: #111; font-size: 18px; display: inline-block;}
-        .poi-popup p { font-size: 14px; line-height: 1.6; color: #333; margin: 10px 0; max-height: 150px; overflow-y: auto; text-align: justify; padding-left: 5px;}
+        .poi-popup p { font-size: 14px; line-height: 1.6; color: #333; margin: 10px 0; overflow-y: auto; text-align: justify; padding-left: 5px; flex-grow: 1;}
 
         /* התאמות מובייל */
         @media (max-width: 600px) {
@@ -196,6 +208,8 @@
             #info-panel { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-width: none; height: 50vh; border-radius: 20px 20px 0 0; padding: 15px 20px; z-index: 10; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); display: flex;}
             #info-panel.minimized { height: 75px !important; overflow: hidden; padding-bottom: 0; cursor: pointer; }
             #info-panel.minimized .panel-header { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
+            #info-panel.minimized .info-content-wrapper { display: none; }
+            #info-panel.minimized .bottom-actions { display: none; }
             #info-panel.minimized #drag-hint { display: block; }
             #drag-handle-wrapper { display: flex; }
             
@@ -255,6 +269,7 @@
         </div>
     </div>
 
+    <!-- חלונית מידע מתוקנת עם אזור גלילה לתקציר -->
     <div id="info-panel" style="display: none;">
         <div id="drag-handle-wrapper">
             <div id="drag-handle"></div>
@@ -306,6 +321,7 @@
         </div>
     </div>
 
+    <!-- מודל אודות (קרדיטים) -->
     <div id="about-backdrop"></div>
     <div id="about-modal">
         <div class="compare-header">
@@ -335,6 +351,21 @@
         </div>
     </div>
 
+    <!-- מסך Onboarding -->
+    <div id="onboarding-backdrop"></div>
+    <div id="onboarding-modal">
+        <h2>ברוכים הבאים ל-Atlas 🌍</h2>
+        <h3>האטלס הוויקיפדי</h3>
+        <p>פלטפורמה מתקדמת לחקר גיאוגרפי, המשלבת ויזואליזציית נתונים ומידע בזמן אמת.</p>
+        <ul class="onboarding-features">
+            <li><strong>📊 חקר מבוסס נתונים:</strong> ניתוח והשוואה של מדדי מקרו-כלכלה ודמוגרפיה בין עשרות מדינות.</li>
+            <li><strong>🗺️ אינטגרציה מרחבית:</strong> מיפוי דינמי של אלפי ערים, אתרי טבע ומונומנטים היסטוריים.</li>
+            <li><strong>🔍 העשרה תוכנית:</strong> שאיבת תקצירי מידע ונתונים משלימים מויקיפדיה לכל נקודת עניין.</li>
+        </ul>
+        <button id="start-onboarding-btn">התחל בחקר המפה</button>
+    </div>
+
+    <!-- חלון השוואה נגרר -->
     <div id="compare-backdrop"></div>
     <div id="compare-modal">
         <div class="compare-drag-handle">≡ לחץ וגרור להזזה</div>
@@ -382,6 +413,12 @@
         let currentLoadedISO = null;
 
         const formatRank = (rank) => rank ? `<span class="rank-text"> (מקום ${rank})</span>` : "";
+
+        // סגירת מסך ההסבר
+        document.getElementById('start-onboarding-btn').onclick = () => {
+            document.getElementById('onboarding-backdrop').style.display = 'none';
+            document.getElementById('onboarding-modal').style.display = 'none';
+        };
 
         if (isMobile) {
             document.getElementById('legend-content').classList.add('collapsed');
@@ -1005,7 +1042,6 @@
             const areaRankHtml = (!data.isSea && !data.isDisputed && stats && stats.Area_Rank) ? formatRank(stats.Area_Rank) : "";
             document.getElementById('country-area').innerHTML = areaText + areaRankHtml;
 
-            // שימוש בקובץ המקומי שעודכן, חיפוש אותיות גדולות בלבד למניעת שגיאות
             document.getElementById('country-wiki').innerText = wikiSummaries[iso.toUpperCase()] || 'לא נמצא תקציר זמין כרגע.';
             
             let wikiSearchTerm = p.Wiki_HE || p.WIKI_HE || data.name;
