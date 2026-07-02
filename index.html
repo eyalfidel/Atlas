@@ -29,7 +29,7 @@
         /* שורת חיפוש */
         #search-container { position: relative; width: 100%; max-width: 450px; }
         #search-wrapper { display: flex; align-items: center; background: #fff; border: 1px solid #ccc; border-radius: 6px; width: 100%; }
-        #search-input { border: none; border-radius: 0 6px 6px 0; padding: 10px 15px; width: 100%; font-size: 15px; outline: none; background: transparent; }
+        #search-input { border: none; border-radius: 0 6px 6px 0; padding: 10px 15px; width: 100%; font-size: 16px; outline: none; background: transparent; }
         #search-filter-btn { background: none; border: none; border-right: 1px solid #eee; cursor: pointer; padding: 0 15px; font-size: 18px; border-radius: 6px 0 0 6px; transition: background 0.2s; }
         #search-filter-btn:hover { background: #f0f7ff; }
         
@@ -39,7 +39,7 @@
         #search-settings input[type="radio"], #search-settings input[type="checkbox"] { margin-left: 8px; accent-color: #3b82f6; }
         #local-search-container { display: none; margin-top: 12px; border-top: 1px solid #eee; padding-top: 12px; font-weight: bold; color: #1d4ed8; }
 
-        #suggestions { position: absolute; top: calc(100% + 2px); right: 0; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 6px; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; z-index: 1001; }
+        #suggestions { position: absolute; top: calc(100% + 2px); right: 0; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 6px; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; z-index: 1001; touch-action: pan-y; }
         .suggestion-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; text-align: right; transition: background 0.2s; }
         .suggestion-item:last-child { border-bottom: none; }
         .suggestion-item:hover { background-color: #f0f7ff; }
@@ -68,7 +68,7 @@
         #info-panel h2 { margin: 0; color: #1a1a1a; display: flex; align-items: center; gap: 10px; font-size: 20px; }
         #country-flag { height: 26px; display: none; border-radius: 4px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        .info-content-wrapper { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; padding-right: 5px;}
+        .info-content-wrapper { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; padding-right: 5px; touch-action: pan-y;}
 
         .info-row { margin-bottom: 12px; font-size: 15px; line-height: 1.4; flex-shrink: 0; }
         .info-label { font-weight: bold; color: #555; display: block; font-size: 13px; margin-bottom: 2px; }
@@ -83,7 +83,7 @@
 
         /* אזור התקציר הנגלל */
         #country-wiki-container { margin-top: 15px; display: flex; flex-direction: column; flex-grow: 1; min-height: 80px; }
-        #country-wiki { font-size: 14px; color: #333; line-height: 1.6; text-align: justify; background: #f8f9fa; padding: 12px; border-radius: 8px; border-right: 4px solid #3b82f6; overflow-y: auto; flex-grow: 1; margin-bottom: 10px;}
+        #country-wiki { font-size: 14px; color: #333; line-height: 1.6; text-align: justify; background: #f8f9fa; padding: 12px; border-radius: 8px; border-right: 4px solid #3b82f6; overflow-y: auto; flex-grow: 1; margin-bottom: 10px; touch-action: pan-y;}
         
         /* כפתורי פעולה בתחתית חלוניות - תמיד גלויים */
         .bottom-actions { display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px; flex-wrap: wrap; align-items: center; flex-shrink: 0;}
@@ -124,7 +124,7 @@
         #close-panel { font-size: 18px; color: #888; margin-right: 10px; cursor: pointer; background: none; border: none; padding: 0; }
 
         #about-backdrop, #compare-backdrop, #onboarding-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; backdrop-filter: blur(2px); }
-        #about-modal, #compare-modal, #onboarding-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 700px; max-height: 85vh; overflow-y: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 2001; display: none; }
+        #about-modal, #compare-modal, #onboarding-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 700px; max-height: 85vh; max-height: 85dvh; overflow-y: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 2001; display: none; touch-action: pan-y; }
         
         /* מסך Onboarding */
         #onboarding-backdrop { z-index: 4000; display: block; }
@@ -139,13 +139,14 @@
         #start-onboarding-btn:hover { background: #2563eb; }
 
         /* חלונית השוואה - מתוקנת עם רוחב ומיקום ברורים ל-Resize */
-        #compare-modal { 
-            position: absolute; 
-            top: 15vh; 
-            right: 15vh; 
-            width: 600px; 
-            max-height: 80vh; 
-            overflow-y: auto; 
+        #compare-modal {
+            position: absolute;
+            top: 15vh;
+            right: 15vh;
+            width: 600px;
+            max-height: 80vh;
+            max-height: 80dvh;
+            overflow-y: auto;
             background: rgba(255, 255, 255, 0.98); 
             padding: 20px; 
             border-radius: 12px; 
@@ -195,24 +196,32 @@
         .popup-recenter-btn:hover { color: #3b82f6;}
         
         .poi-popup h4 { margin: 0 0 8px 0; color: #111; font-size: 18px; display: inline-block;}
-        .poi-popup p { font-size: 14px; line-height: 1.6; color: #333; margin: 10px 0; overflow-y: auto; text-align: justify; padding-left: 5px; flex-grow: 1;}
+        .poi-popup p { font-size: 14px; line-height: 1.6; color: #333; margin: 10px 0; overflow-y: auto; text-align: justify; padding-left: 5px; flex-grow: 1; touch-action: pan-y;}
 
         /* התאמות מובייל */
         @media (max-width: 600px) {
-            #top-bar { flex-wrap: wrap; padding: 10px; top: 10px; left: 10px; right: 10px; gap: 10px; }
+            #top-bar { flex-wrap: wrap; padding: 8px; top: 8px; left: 8px; right: 8px; gap: 8px; }
             .top-bar-right, .top-bar-left { flex: none; width: auto; }
             .top-bar-center { order: 3; flex-basis: 100%; width: 100%; }
             #search-container { max-width: none; }
             #search-settings { width: 100%; box-sizing: border-box; }
-            
-            #info-panel { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-width: none; height: 50vh; border-radius: 20px 20px 0 0; padding: 15px 20px; z-index: 10; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); display: flex;}
+
+            #top-bar h1 { font-size: 18px; }
+            button.icon-btn { font-size: 19px; padding: 4px; }
+            .primary-btn { font-size: 12px; padding: 6px 10px; }
+            .icon-only-btn { padding: 5px 9px; }
+            #close-panel, #close-compare-modal, #close-about-modal { font-size: 16px; }
+            .legend-item { font-size: 13px; margin-bottom: 5px; padding: 3px 5px; }
+            .legend-color { width: 12px; height: 12px; }
+
+            #info-panel { top: auto; bottom: 0; right: 0; left: 0; width: auto; max-width: none; height: 50vh; height: 50dvh; border-radius: 20px 20px 0 0; padding: 15px 20px; z-index: 10; box-shadow: 0 -5px 20px rgba(0,0,0,0.2); display: flex; resize: none; }
             #info-panel.minimized { height: 75px !important; overflow: hidden; padding-bottom: 0; cursor: pointer; }
             #info-panel.minimized .panel-header { border-bottom: none; margin-bottom: 0; padding-bottom: 0;}
             #info-panel.minimized .info-content-wrapper { display: none; }
             #info-panel.minimized .bottom-actions { display: none; }
             #info-panel.minimized #drag-hint { display: block; }
             #drag-handle-wrapper { display: flex; }
-            
+
             #compare-modal { left: 5%; right: auto; margin-left: 0; width: 90%; top: 10vh; resize: none; }
             .compare-table th, .compare-table td { padding: 8px 5px; font-size: 13px; }
             .compare-flag { width: 40px; }
@@ -393,8 +402,32 @@
         mapboxgl.setRTLTextPlugin('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.3.0/mapbox-gl-rtl-text.js', null, true);
         mapboxgl.accessToken = 'pk.eyJ1IjoiZXlhbGZpZGVsIiwiYSI6ImNtbm5kNHhjYTFocW0ycXM5eWN1bmprYTMifQ.o78OO-6F8ieXVTPGbmMCcA';
         
-        const isMobile = window.innerWidth < 600;
+        let isMobile = window.innerWidth < 600;
         const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/light-v11', center: [34.78, 32.08], zoom: isMobile ? 1.2 : 3, projection: 'globe' });
+
+        // isMobile is read once above for initial map zoom, but stays reactive afterwards so
+        // rotating the phone (or resizing) doesn't leave the JS mobile state out of sync with
+        // the CSS breakpoint at max-width:600px.
+        window.addEventListener('resize', () => {
+            const nowMobile = window.innerWidth < 600;
+            if (nowMobile === isMobile) return;
+            isMobile = nowMobile;
+            if (isMobile) {
+                document.getElementById('legend-content').classList.add('collapsed');
+                document.getElementById('legend-arrow').innerText = '▼';
+            }
+            const panel = document.getElementById('info-panel');
+            if (panel.style.display === 'flex') {
+                if (isMobile) {
+                    panel.style.height = '50vh';
+                    panel.classList.add('minimized');
+                } else {
+                    panel.style.height = '';
+                    panel.classList.remove('minimized');
+                }
+            }
+        });
+        window.addEventListener('orientationchange', () => window.dispatchEvent(new Event('resize')));
         map.on('style.load', () => { map.setFog({'color': 'rgb(220, 230, 240)', 'high-color': 'rgb(36, 92, 223)', 'space-color': 'rgb(11, 11, 25)'}); });
 
         const disputedRegions = { 'XB': 'צפון-מזרח אפריקה (שטח הפקר)', 'XS': 'דרום-מזרח אסיה (ים סין הדרומי)', 'XC': 'דרום-מזרח אסיה (ים סין הדרומי)', 'XJ': 'האיים הקריביים', 'XR': 'האיים הקריביים', 'XP': 'אמריקה הדרומית (פטגוניה)' };
@@ -1166,10 +1199,14 @@
                         map.flyTo({ center: rand.feature.geometry.coordinates, zoom: 14 });
                         setTimeout(() => openPOIPopup(rand.feature, rand.feature.geometry.coordinates), 500);
                     }, 500);
+                } else if (isComparingMode) {
+                    const targetData = globalData.get(rand.code);
+                    if (targetData.isSea || targetData.isDisputed) alert("לא ניתן להשוות לימים או לשטחים במחלוקת.");
+                    else executeComparison(targetData);
                 } else {
                     loadFeature(rand.code);
                 }
-            } 
+            }
         };
 
         document.getElementById('compare-init-btn').onclick = () => {
