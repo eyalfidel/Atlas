@@ -1333,21 +1333,52 @@
         const panel = document.getElementById('info-panel');
         const handle = document.getElementById('drag-handle-wrapper');
         let isDragging = false;
-        
+        let dragStartY = 0;
+        let dragMoved = false;
+
+        // כפתור עכבר (דסקטופ): לחיצה רגילה מחליפה מצב מוקטן/מורחב
         handle.addEventListener('click', () => {
             if (isMobile) {
                 panel.classList.toggle('minimized');
+                panel.style.height = panel.classList.contains('minimized') ? '' : '50vh';
             }
         });
 
-        handle.addEventListener('touchstart', (e) => { isDragging = true; panel.style.transition = 'none'; e.preventDefault(); }, { passive: false });
+        // מגע (מובייל): touchstart מבטל את אירוע ה-click הסינתטי, אז יש לזהות
+        // "הקשה" מול "גרירה" ידנית, ולהסיר את מצב ה-minimized (שנעול בגובה קבוע
+        // ע"י CSS !important) ברגע שמתחילה גרירה אמיתית, אחרת הפאנל לא זז בכלל.
+        handle.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            dragMoved = false;
+            dragStartY = e.touches[0].clientY;
+            panel.style.transition = 'none';
+            e.preventDefault();
+        }, { passive: false });
+
         document.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
             const touchY = e.touches[0].clientY, vh = window.innerHeight;
+            if (!dragMoved && Math.abs(touchY - dragStartY) > 5) {
+                dragMoved = true;
+                panel.classList.remove('minimized');
+            }
+            if (!dragMoved) return;
             let newHeight = Math.max(vh * 0.15, Math.min(vh - touchY, vh * 0.90));
             panel.style.height = `${newHeight}px`;
         }, { passive: false });
-        document.addEventListener('touchend', () => { if (isDragging) { isDragging = false; panel.style.transition = 'height 0.3s ease'; }});
+
+        document.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.style.transition = 'height 0.3s ease';
+            if (!dragMoved) {
+                panel.classList.toggle('minimized');
+                // הגדרה מפורשת של 50vh (במקום לנקות ל-'' ולסמוך על נפילה חזרה
+                // לגיליון הסגנונות) - מונעת חוסר עקביות בעת שינוי height ו-
+                // transition בו-זמנית באותה הרצה סינכרונית.
+                panel.style.height = panel.classList.contains('minimized') ? '' : '50vh';
+            }
+        });
     </script>
 </body>
 </html>
